@@ -55,6 +55,12 @@ else:
 \textbf{SHA-256}:
 \item%iii
 \textbf{Chunk Matching}:
+\begin{lstlisting}[language=python]
+if shaResult in chunkDictionary:
+    send(shaResult)
+else:
+    send(LZW(rawChunk))
+\end{lstlisting}
 \item%iv
 \textbf{LZW Encoding}:
 
