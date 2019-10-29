@@ -6,6 +6,7 @@
 \usepackage{appendix}
 \usepackage{graphicx}
 
+
 \title{ESE532 Project P1 Report}
 \author{Ritika Gupta, Taylor Nelms, and Nishanth Shyamkumar}
 
@@ -33,7 +34,23 @@ By similar logic as the last question, with a $200$MHz clock, we end up with $12
 \item%a
 \begin{enumerate}[label=(\roman*)]
 \item%i
-\textbf{Content-Defined Chunking}:
+\textbf{Content-Defined Chunking}:\newline
+\begin{lstlisting}[language=python]
+skip input to minChunkSize - windowSize
+buffer = input[minChunkSize - windowSize : minChunkSize]
+curHash = 0
+for byte in buffer:
+    curHash += hash(byte)
+if curHash == 0:
+    markChunkBreak()
+else:
+    while (curHash != 0 and (notAtMaxChunkSize())):
+        curHash -= hash(buffer[0])
+        moveBufferWindow()
+        readNextByte()
+        curHash += hash(buffer[windowSize - 1])
+    markChunkBreak()
+\end{lstlisting}
 \item%ii
 \textbf{SHA-256}:
 \item%iii
