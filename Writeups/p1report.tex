@@ -234,10 +234,10 @@ With each table lookup result depending (potentially) on the last table entry, e
 Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
 \item%ii
 \textbf{SHA-256}:\newline
-
+The entire SHA main loop could be feasibly pipelined.
 \item%iii
 \textbf{Chunk Matching}:\newline
-There aren't really enough tasks here to pipeline, feasibly.
+There aren't really enough tasks here to pipeline sensibly.
 
 \item%iv
 \textbf{LZW Encoding}:\newline
