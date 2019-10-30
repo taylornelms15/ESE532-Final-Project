@@ -122,6 +122,7 @@ while(True):
 Credit: https://www.dspguide.com/ch27/5.htm
 \end{enumerate}%3a
 \item%b % memory requirements
+\textbf{Memory Requirements}
 \begin{enumerate}[label=(\roman*)]
 \item%i
 \textbf{Content-Defined Chunking}:\newline
@@ -142,6 +143,7 @@ This is a somewhat tricky question given the associative memory involved, but it
 \end{enumerate}%3b
 
 \item%c
+\textbf{Computational Requirements}
 \begin{enumerate}[label=(\roman*)]
 \item%i
 \textbf{Content-Defined Chunking}:\newline
@@ -158,7 +160,9 @@ This is a somewhat tricky question given the associative memory involved, but it
 
 
 \end{enumerate}%3c
+
 \item%d
+\textbf{Memory Access Requirements}
 \begin{enumerate}[label=(\roman*)]
 \item%i
 \textbf{Content-Defined Chunking}:\newline
@@ -183,8 +187,9 @@ This is a somewhat tricky question given the associative memory involved, but it
 \item%4
 \begin{enumerate}[label=(\alph*)]
 \item%a
-The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in parallel.
-\item%b
+The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in parallel, as neither depends on the other.
+\item%b Task-Level
+\textbf{Task-Level Parallelism}
 \begin{enumerate}[label=(\roman*)]
 \item%i
 \textbf{Content-Defined Chunking}:\newline
@@ -194,32 +199,51 @@ The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in paralle
 
 \item%iii
 \textbf{Chunk Matching}:\newline
-
+There aren't many tasks here, so task-level parallelism seems a rather useless thing to pursue.
 
 \item%iv
 \textbf{LZW Encoding}:\newline
 
 
-\end{enumerate}%4b
+\end{enumerate}%4b Task-Level
 
-\item%c
+\item%c Data-Level
+\textbf{Data-Level Parallelism}
 \begin{enumerate}[label=(\roman*)]
 \item%i
 \textbf{Content-Defined Chunking}:\newline
-
+Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
 \item%ii
 \textbf{SHA-256}:\newline
 
 \item%iii
 \textbf{Chunk Matching}:\newline
-
+With each table lookup result depending (potentially) on the last table entry, engaging in any parallelism here seems foolish.
 
 \item%iv
 \textbf{LZW Encoding}:\newline
 
 
-\end{enumerate}%4c
-\item%d
+\end{enumerate}%4c Data-Level
+
+\item%d Pipeline
+\textbf{Pipeline Parallelism}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
+\item%ii
+\textbf{SHA-256}:\newline
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+There aren't really enough tasks here to pipeline, feasibly.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+If the end goal is to fill some kind of input/output buffers while dealing with streaming I/O data, any processes like that could be pipelined pretty well. For any of the internals, though, the logic should be atomic enough that the pipelining approach may not work optimally.
+
+\end{enumerate}%4d Pipeline
 
 \item%e
 
