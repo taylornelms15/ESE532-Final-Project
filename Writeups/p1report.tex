@@ -34,7 +34,7 @@ By similar logic as the last question, with a $200$MHz clock, we end up with $12
 \item%a
 \begin{enumerate}[label=(\roman*)]
 \item%i
-\textbf{Content-Defined Chunking}:\newline
+\textbf{Content-Defined Chunking}:
 \begin{lstlisting}[language=python]
 skip input to minChunkSize - windowSize
 buffer = input[minChunkSize - windowSize : minChunkSize]
@@ -112,8 +112,8 @@ while(True):
     if STRING + CHAR in table.values():
         STRING += CHAR
     else:
-        Output.write([x for x in table.keys() if table[x] == STRING][0])
-        table[curPos] = STRING + CHAR
+        Output.write(table[STRING])
+        table[STRING + CHAR] = curPos
         curPos += 1
         STRING = CHAR
     if Input.isDone():
@@ -121,7 +121,25 @@ while(True):
 \end{lstlisting}
 Credit: https://www.dspguide.com/ch27/5.htm
 \end{enumerate}%2a
-\item%b
+\item%b % memory requirements
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+We'll need a rolling hash window's worth of working memory, spanning 16ish bytes.
+
+\item%ii
+\textbf{SHA-256}:\newline
+We'll want a table of constant values for the hash algorithm (roughly 72 bytes), plus a 64-byte SHA-block span of memory to work on.
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+We'll want a table to store hash values for index purposes, which would require at least 8 bytes times the maximum number of chunks to be processed.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+This is a somewhat tricky question given the associative memory involved, but it will be on the scale of roughly MAX\_CHUNK\_SIZE entries times 12 bits.
+
+\end{enumerate}%2b
 
 \item%c
 
