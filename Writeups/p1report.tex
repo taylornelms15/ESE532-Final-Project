@@ -102,10 +102,24 @@ else:
 \item%iv
 \textbf{LZW Encoding}:
 \begin{lstlisting}[language=python]
-
-
+table = {}
+for i in range(256):
+    table[i] = i
+curPos = 256
+STRING = Input.read()
+while(True):
+    CHAR = Input.read()
+    if STRING + CHAR in table.values():
+        STRING += CHAR
+    else:
+        Output.write([x for x in table.keys() if table[x] == STRING][0])
+        table[curPos] = STRING + CHAR
+        curPos += 1
+        STRING = CHAR
+    if Input.isDone():
+        break
 \end{lstlisting}
-Credit: Wikipedia
+Credit: https://www.dspguide.com/ch27/5.htm
 \end{enumerate}%2a
 \item%b
 
