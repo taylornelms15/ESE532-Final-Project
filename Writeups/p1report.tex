@@ -37,7 +37,7 @@ By similar logic as the last question, with a $200$MHz clock, we end up with $12
 \textbf{Content-Defined Chunking}:
 \begin{lstlisting}[language=python]
 
-read input from DRAM to a local buffer
+read input from secondary storage to a local buffer
 hash arg is used to update window size chunk and store rabin fingerprint
   
   while input present:
@@ -210,7 +210,8 @@ Credit: https://www.dspguide.com/ch27/5.htm
 \item%i
 \textbf{Content-Defined Chunking}:\newline
 We'll need a rolling hash window's worth of working memory, spanning 16ish bytes.
-
+Structure to store rabin fingerprint, chunk size that has been slid over.
+2 2KB tables that is used by the Rabin algorithm.
 \item%ii
 \textbf{SHA-256}:\newline
 Eight 32-bit span of memory to hold hash values, 
