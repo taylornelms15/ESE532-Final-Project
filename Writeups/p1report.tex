@@ -54,6 +54,70 @@ else:
 \item%ii
 \textbf{SHA-256}:
 \begin{lstlisting}[language=python]
+
+# RITIKA'S VERSION
+hash[0:7] = initializeHashValues()
+k[0:63] = initializeMessageSchedule()
+
+for each chunk
+	for each 512_bit_subchunk m[]	# 64 byte sunchunk m[]
+		for ( ; i < 64; ++i)	# For eevry byte in subchunk
+			m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) 
+						+ m[i - 16];
+		
+		# call update function
+		sha_update(data, len)
+
+	# Compute hash for last incomplete chunk, if any
+	if (last_subchunk < 448 bits)
+		append 1
+		append 0s to make 448 bits
+	else
+		append 1
+		append 0s to make 512 bits
+		sha_update(last_subchunk, 64)
+		last_chunk[] = {0}
+		
+	append_0s_till_448_bit_subchunk()
+	append_msg_len_in_last_64_bits()
+	sha_update(last_subchunk)
+	convert_hash_values_big_endian()		
+
+sha_update(data, len)
+	# initialize working variables with previous hash values
+	a = hash[0]
+	b = hash[1]
+	c = hash[2]
+	d = hash[3]
+	e = hash[4]
+	f = hash[5]
+	g = hash[6]
+	h = hash[7]
+		
+	# update_working_variables()
+	for ( ; i < 64; ++i)	# For every byte in subchunk
+		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
+		t2 = EP0(a) + MAJ(a,b,c);
+		h = g;
+		g = f;
+		f = e;
+		e = d + t1;
+		d = c;
+		c = b;
+		b = a;
+		a = t1 + t2;
+		
+	# increment hash values by corresponding working variable
+	hash[0] += a	
+	hash[1] += b
+	hash[2] += c
+	hash[3] += d	
+	hash[4] += e
+	hash[5] += f
+	hash[6] += g	
+	hash[7] += h
+
+# TAYLOR'S VERSION
 h[0:7] = initializeHashValues()
 k[0:63] = initializeRoundConstants()
 padInitialMessage()#pads to a 512-bit boundary
@@ -130,7 +194,10 @@ We'll need a rolling hash window's worth of working memory, spanning 16ish bytes
 
 \item%ii
 \textbf{SHA-256}:\newline
-We'll want a table of constant values for the hash algorithm (roughly 72 bytes), plus a 64-byte SHA-block span of memory to work on.
+Eight 32-bit span of memory to hold hash values, 
+sixty four 32-bit span of memory for storing message schedule,
+ten 32-bit span of memory for working vraiables, and
+64-byte SHA-block span of memory.
 
 \item%iii
 \textbf{Chunk Matching}:\newline
