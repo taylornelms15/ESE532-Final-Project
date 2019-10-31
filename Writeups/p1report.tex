@@ -246,10 +246,11 @@ Total no of operations = 96 + 1200 + 2496 + 8 = 3800 computations
 
 \item%iii
 \textbf{Chunk Matching}:\newline
-
+The only real operation here is a dictionary lookup, so computation can sensibly be considered negligible.
 
 \item%iv
 \textbf{LZW Encoding}:\newline
+With sensible dictionary lookup, there should be on the scale of one comparison operation per incoming byte of input, plus possibly a couple of additions as we loop through the incoming data.
 
 
 \end{enumerate}%3c
@@ -270,11 +271,11 @@ Total operations: 64 + 8 + 8 = 80
 
 \item%iii
 \textbf{Chunk Matching}:\newline
-
+One dictionary lookup should be required for each incoming hashed value; as such, we're looking at roughly 32 bytes of memory read (for reading the hash), and whatever memory costs are required after that for a dictionary lookup on that value.
 
 \item%iv
 \textbf{LZW Encoding}:\newline
-
+With efficient encoding, there should be roughly one memory read and one memory write involved in devising the code for each incoming byte as part of LZW. This will, of course, be very dependent on the specific dictionary implementation.
 
 \end{enumerate}%3d
 
@@ -306,7 +307,7 @@ There aren't many tasks here, so task-level parallelism seems a rather useless t
 
 \item%iv
 \textbf{LZW Encoding}:\newline
-
+The overall task graph for LZW encoding is close enough to linear that there is not much reasonable task-level parallelism to be captured.
 
 \end{enumerate}%4b Task-Level
 
@@ -326,7 +327,7 @@ With each table lookup result depending (potentially) on the last table entry, e
 
 \item%iv
 \textbf{LZW Encoding}:\newline
-
+With every incoming byte's code potentially dependent on the previous byte's code lookup results, there is no sensible data-level parallelism to be leveraged for LZW.
 
 \end{enumerate}%4c Data-Level
 
