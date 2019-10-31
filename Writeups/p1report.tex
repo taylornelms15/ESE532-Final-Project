@@ -57,7 +57,7 @@ else:
 
 # RITIKA'S VERSION
 hash[0:7] = initializeHashValues()
-k[0:63] = initializeMessageSchedule()
+k[0:63] = initializeRoundConstants()
 
 for each chunk
 	for each 512_bit_subchunk m[]	# 64 byte sunchunk m[]
@@ -84,6 +84,12 @@ for each chunk
 	convert_hash_values_big_endian()		
 
 sha_update(data, len)
+	# initialize message schedule m[]
+	for (i = 0, j = 0; i < 16; ++i, j += 4)
+		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
+	for ( ; i < 64; ++i)
+		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
+
 	# initialize working variables with previous hash values
 	a = hash[0]
 	b = hash[1]
@@ -196,7 +202,8 @@ We'll need a rolling hash window's worth of working memory, spanning 16ish bytes
 \textbf{SHA-256}:\newline
 Eight 32-bit span of memory to hold hash values, 
 sixty four 32-bit span of memory for storing message schedule,
-ten 32-bit span of memory for working vraiables, and
+sixty four 32-bit span of memory for storing round constants,
+ten 32-bit span of memory for working variables, and
 64-byte SHA-block span of memory.
 
 \item%iii
@@ -217,6 +224,12 @@ This is a somewhat tricky question given the associative memory involved, but it
 
 \item%ii
 \textbf{SHA-256}:\newline
+Computation work per chunk: (Ignoring the index and loop iterator computations)
+Prepare the message schedule m[i]: 16 * (3 ORs + 3 Shifts) = 96 operations
+ 						      (64 - 16) * (3 ADDS + 11 for SIG0 + 11 for SIG1) = 1200 operations
+Update the working variables: 64 * (7 adds + 14 for EP0 + 14 for EP1 + 4 for CH + 5 for MAJ) = 2496 operations
+Update hash values: 8 adds
+Total no of operations = 96 + 1200 + 2496 + 8 = 3800 computations
 
 \item%iii
 \textbf{Chunk Matching}:\newline
@@ -236,6 +249,11 @@ This is a somewhat tricky question given the associative memory involved, but it
 
 \item%ii
 \textbf{SHA-256}:\newline
+Memory operations per chunk(Ignoring local - BRAM reads and writes): 
+Prepare the message schedule m[i]: 16 * (4 reads) = 64 
+Initiate the working variables: 8 reads  
+Update hash values : 8 writes
+Total operations: 64 + 8 + 8 = 80 
 
 \item%iii
 \textbf{Chunk Matching}:\newline
@@ -254,7 +272,8 @@ This is a somewhat tricky question given the associative memory involved, but it
 \item%4
 \begin{enumerate}[label=(\alph*)]
 \item%a
-The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in parallel, as neither depends on the other.
+The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in parallel, as neither depends on the other. 
+Once, SHA256 completes and tells whether the chunk already exists or not, the decision can be made whether to continue with LZW or discard its output.  
 \item%b Task-Level
 \textbf{Task-Level Parallelism}
 \begin{enumerate}[label=(\roman*)]
@@ -263,6 +282,10 @@ The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in paralle
 
 \item%ii
 \textbf{SHA-256}:\newline
+Hash computation of each input chunk is independent of each other. But this is limited by the input coming from CDC, which will send input chunk by chunk.
+For each input chunk, SHA256 works by dividing the input chunk into 512 bit subchunks and padding the last subchunk if it is less than 512. The computation of hash values for each subchunk 
+is dependent on the previous hash computation. So, it inhibits parallelization of computation for each subchunk. Each subchunk has to go sequentially. But it does not need to wait for 
+the entire input chunk to start computation. It can start as soon as it receives first 512 bits because padding only happens in the last subchunk, that's too only if it is less than 512 bits. 
 
 \item%iii
 \textbf{Chunk Matching}:\newline
@@ -282,7 +305,8 @@ There aren't many tasks here, so task-level parallelism seems a rather useless t
 Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
 \item%ii
 \textbf{SHA-256}:\newline
-
+There is no data-level parallelism within the computation for each subchunk. There is data-level parallelism for each sub-chunk as different sub-chunks are to be given to each thread, but since 
+one subchunk computation is dependent on previous subchunk computation, this parallelism can't be exploited.
 \item%iii
 \textbf{Chunk Matching}:\newline
 With each table lookup result depending (potentially) on the last table entry, engaging in any parallelism here seems foolish.
@@ -301,7 +325,8 @@ With each table lookup result depending (potentially) on the last table entry, e
 Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
 \item%ii
 \textbf{SHA-256}:\newline
-The entire SHA main loop could be feasibly pipelined.
+The entire SHA main loop operating on input chunks coming from CDC could be feasibly pipelined. II in this case would be equal to the no. of cycles it takes to complete hash computation for 1 chunk. The II is restrcited by dependencies of internal
+variables within the subchunk computation. The depth of pipeline is no. of subchunks in an input chunk. 
 \item%iii
 \textbf{Chunk Matching}:\newline
 There aren't really enough tasks here to pipeline sensibly.
