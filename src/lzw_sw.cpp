@@ -5,6 +5,18 @@
 #include <stdint.h>
 #include "lzw_sw.h"
 ///In implementation, this might be a 13-bit or 14-bit type
+#ifndef MAXCHARVAL
+#define MAXCHARVAL 256
+#endif
+
+#ifndef MAXCHUNKLENGTH
+#define MAXCHUNKLENGTH 8192
+#endif
+
+#ifndef NONEFOUND
+#define NONEFOUND 0xFFFF
+#endif
+
 static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
 
 /**
@@ -54,7 +66,7 @@ int xferBufferToOutput(const uint16_t* buffer, uint8_t* output, int numElements)
 
     uint32_t numOutput = outIndex + 1;
     uint32_t header = (numOutput - 4) << 1;//bit 0 is 0 because LZW chunk, the rest is the size of the data. Subtracting 4 to get "size of LZW" part sans header
-    memcpy((void*) &output[0], header, 1 * sizeof(uint32_t));//put header into the top of the output table
+    memcpy((void*) &output[0], &header, 1 * sizeof(uint32_t));//put header into the top of the output table
 
 
     return numOutput;
@@ -65,11 +77,9 @@ int xferBufferToOutput(const uint16_t* buffer, uint8_t* output, int numElements)
 Compresses numElements bytes from the array marked "input", outputs them into "output"
 Returns the number of output bytes
 */
-int lzwCompress(const uint8_t* input, int numElements, uint16_t* output) {
+int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
     uint16_t outBuffer[MAXCHUNKLENGTH];
     memset((void*) table, 0xFF, MAXCHUNKLENGTH * MAXCHARVAL * sizeof(uint16_t));//just set to all ones
-
-    //IMPORTANT TODO: make sure that NONEFOUND gets #define'd as 0xFFFF
 
 	///index of the input element we're reading
 	int iidx = 0;
