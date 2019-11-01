@@ -1,0 +1,377 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{appendix}
+\usepackage{graphicx}
+
+
+\title{ESE532 Project P1 Report}
+\author{Ritika Gupta, Taylor Nelms, and Nishanth Shyamkumar}
+
+\begin{document}
+
+\maketitle
+
+
+\begin{enumerate}
+\item%1
+Our group makeup is Ritika Gupta, Taylor Nelms, and Nishanth Shyamkumar.
+
+\item%2
+\begin{enumerate}[label=(\alph*)]
+\item%a
+We end up with $64ns$ to process each $64b$ word of input, which comes out to $76.8$ (so, $76$) cycles for a $1.2$GHz processor.
+
+\item%b
+By similar logic as the last question, with a $200$MHz clock, we end up with $12.8$ (so, $12$) cycles to process all of the input.
+
+\end{enumerate}%2
+
+\item%3
+\begin{enumerate}[label=(\alph*)]
+\item%a
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:
+\begin{lstlisting}[language=python]
+
+read input from secondary storage to a local buffer
+hash arg is used to update window size chunk and store rabin fingerprint
+  
+  while input present:
+    fread(buf, buf_len, 1, fp)
+    len = buf_len
+    while len >= 0:
+      generatechunk(hash, buf, len)
+      len -= hash.length
+      sha256_hash(chunk)
+
+generatechunk(hash, buf,len):
+  for b in buf:
+    rabin_slide(hash, b)  //Calculates rabin fingerprint on hash.window. 
+
+    if(hash.length >= MIN_SIZE && (hash.digest & MASK) == 0 || hash.length >= MAX_SIZE) //MASK is a bitmask which detects 0 on LSB 20 bits.
+      chunk is generated
+
+      chunk.start = initial pointer
+      chunk.length = hash.length
+    
+      reset_hash(hash)
+      return
+
+    hash.length++;  
+
+\end{lstlisting}
+\item%ii
+\textbf{SHA-256}:
+\begin{lstlisting}[language=python]
+
+hash[0:7] = initializeHashValues()
+k[0:63] = initializeRoundConstants()
+
+for each chunk
+	for each 512_bit_subchunk m[]	# 64 byte sunchunk m[]
+		for ( ; i < 64; ++i)	# For eevry byte in subchunk
+			m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) 
+						+ m[i - 16];
+		
+		# call update function
+		sha_update(data, len)
+
+	# Compute hash for last incomplete chunk, if any
+	if (last_subchunk < 448 bits)
+		append 1
+		append 0s to make 448 bits
+	else
+		append 1
+		append 0s to make 512 bits
+		sha_update(last_subchunk, 64)
+		last_chunk[] = {0}
+		
+	append_0s_till_448_bit_subchunk()
+	append_msg_len_in_last_64_bits()
+	sha_update(last_subchunk)
+	convert_hash_values_big_endian()		
+
+sha_update(data, len)
+	# initialize message schedule m[]
+	for (i = 0, j = 0; i < 16; ++i, j += 4)
+		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
+	for ( ; i < 64; ++i)
+		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
+
+	# initialize working variables with previous hash values
+	a = hash[0]
+	b = hash[1]
+	c = hash[2]
+	d = hash[3]
+	e = hash[4]
+	f = hash[5]
+	g = hash[6]
+	h = hash[7]
+		
+	# update_working_variables()
+	for ( ; i < 64; ++i)	# For every byte in subchunk
+		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
+		t2 = EP0(a) + MAJ(a,b,c);
+		h = g;
+		g = f;
+		f = e;
+		e = d + t1;
+		d = c;
+		c = b;
+		b = a;
+		a = t1 + t2;
+		
+	# increment hash values by corresponding working variable
+	hash[0] += a	
+	hash[1] += b
+	hash[2] += c
+	hash[3] += d	
+	hash[4] += e
+	hash[5] += f
+	hash[6] += g	
+	hash[7] += h
+
+digest = hash0 append hash1 append hash2 append hash3 append hash4 append hash5 append hash6 append hash7
+
+\end{lstlisting}
+Credit: Wikipedia
+\item%iii
+\textbf{Chunk Matching}:
+\begin{lstlisting}[language=python]
+if shaResult in chunkDictionary:
+    send(shaResult)
+else:
+    send(LZW(rawChunk))
+\end{lstlisting}
+\item%iv
+\textbf{LZW Encoding}:
+\begin{lstlisting}[language=python]
+table = {}
+for i in range(256):
+    table[i] = i
+curPos = 256
+STRING = Input.read()
+while(True):
+    CHAR = Input.read()
+    if STRING + CHAR in table.values():
+        STRING += CHAR
+    else:
+        Output.write(table[STRING])
+        table[STRING + CHAR] = curPos
+        curPos += 1
+        STRING = CHAR
+    if Input.isDone():
+        break
+\end{lstlisting}
+Credit: https://www.dspguide.com/ch27/5.htm
+\end{enumerate}%3a
+\item%b % memory requirements
+\textbf{Memory Requirements}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+We'll need a rolling hash window's worth of working memory, spanning 16ish bytes.
+Structure to store rabin fingerprint, chunk size that has been slid over.
+2 2KB tables that is used by the Rabin algorithm.
+\item%ii
+\textbf{SHA-256}:\newline
+Eight 32-bit span of memory to hold hash values, 
+sixty four 32-bit span of memory for storing message schedule,
+sixty four 32-bit span of memory for storing round constants,
+ten 32-bit span of memory for working variables, and
+64-byte SHA-block span of memory.
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+We'll want a table to store hash values for index purposes, which would require at least 8 bytes times the maximum number of chunks to be processed.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+This is a somewhat tricky question given the associative memory involved, but it will be on the scale of roughly MAX\_CHUNK\_SIZE entries times 12 bits.
+
+\end{enumerate}%3b
+
+\item%c
+\textbf{Computational Requirements}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+Ignoring 1 time setup operations, then for each byte:
+rabinslide : 1 xor, 1 add, 1 mod
+rabinappend : 1 (OR + XOR + right shift + left shift)
+rabinnextchunk: 2 compares, 1 bitwise AND, 1AND,  1 OR
+\item%ii
+\textbf{SHA-256}:\newline
+Computation work per chunk: (Ignoring the index and loop iterator computations)
+Prepare the message schedule m[i]: 16 * (3 ORs + 3 Shifts) = 96 operations
+ 						      (64 - 16) * (3 ADDS + 11 for SIG0 + 11 for SIG1) = 1200 operations
+Update the working variables: 64 * (7 adds + 14 for EP0 + 14 for EP1 + 4 for CH + 5 for MAJ) = 2496 operations
+Update hash values: 8 adds
+Total no of operations = 96 + 1200 + 2496 + 8 = 3800 computations
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+The only real operation here is a dictionary lookup, so computation can sensibly be considered negligible.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+With sensible dictionary lookup, there should be on the scale of one comparison operation per incoming byte of input, plus possibly a couple of additions as we loop through the incoming data.
+
+
+\end{enumerate}%3c
+
+\item%d
+\textbf{Memory Access Requirements}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+1 read for byte from buffer
+1 read for the rabin window(for rolling hash)
+1 write to the rabin window(for rolling hash)
+1 read for mod_table(rabin logic)
+\item%ii
+\textbf{SHA-256}:\newline
+Memory operations per chunk(Ignoring local - BRAM reads and writes): 
+Prepare the message schedule m[i]: 16 * (4 reads) = 64 
+Initiate the working variables: 8 reads  
+Update hash values : 8 writes
+Total operations: 64 + 8 + 8 = 80 
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+One dictionary lookup should be required for each incoming hashed value; as such, we're looking at roughly 32 bytes of memory read (for reading the hash), and whatever memory costs are required after that for a dictionary lookup on that value.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+With efficient encoding, there should be roughly one memory read and one memory write involved in devising the code for each incoming byte as part of LZW. This will, of course, be very dependent on the specific dictionary implementation.
+
+\end{enumerate}%3d
+
+\item%e
+
+\end{enumerate}%3
+
+\item%4
+\begin{enumerate}[label=(\alph*)]
+\item%a
+The \textbf{LZW} and \textbf{SHA-256} operations can feasibly be done in parallel, as neither depends on the other. 
+Once, SHA256 completes and tells whether the chunk already exists or not, the decision can be made whether to continue with LZW or discard its output.  
+\item%b Task-Level
+\textbf{Task-Level Parallelism}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+The rabin window manipulation has to be done sequentially as a rolling window. 
+Each 64byte window could be done parallely but requires memory to hold all the window sized buffer. 
+
+\item%ii
+\textbf{SHA-256}:\newline
+Hash computation of each input chunk is independent of each other. But this is limited by the input coming from CDC, which will send input chunk by chunk.
+For each input chunk, SHA256 works by dividing the input chunk into 512 bit subchunks and padding the last subchunk if it is less than 512. The computation of hash values for each subchunk 
+is dependent on the previous hash computation. So, it inhibits parallelization of computation for each subchunk. Each subchunk has to go sequentially. But it does not need to wait for 
+the entire input chunk to start computation. It can start as soon as it receives first 512 bits because padding only happens in the last subchunk, that's too only if it is less than 512 bits. 
+
+\item%iii
+\textbf{Chunk Matching}:\newline
+There aren't many tasks here, so task-level parallelism seems a rather useless thing to pursue.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+The overall task graph for LZW encoding is close enough to linear that there is not much reasonable task-level parallelism to be captured.
+
+\end{enumerate}%4b Task-Level
+
+\item%c Data-Level
+\textbf{Data-Level Parallelism}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+Any particular window of data could, feasibly, be rabin-fingerprinted at the same time; however, given the computational efficiency of doing a rolling hash sequentially, this seems ill-advised.
+\item%ii
+\textbf{SHA-256}:\newline
+There is no data-level parallelism within the computation for each subchunk. There is data-level parallelism for each sub-chunk as different sub-chunks are to be given to each thread, but since 
+one subchunk computation is dependent on previous subchunk computation, this parallelism can't be exploited.
+\item%iii
+\textbf{Chunk Matching}:\newline
+With each table lookup result depending (potentially) on the last table entry, engaging in any parallelism here seems foolish.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+With every incoming byte's code potentially dependent on the previous byte's code lookup results, there is no sensible data-level parallelism to be leveraged for LZW.
+
+\end{enumerate}%4c Data-Level
+
+\item%d Pipeline
+\textbf{Pipeline Parallelism}
+\begin{enumerate}[label=(\roman*)]
+\item%i
+\textbf{Content-Defined Chunking}:\newline
+The CDC is good for pipelined operation with a dataflow model. A byte can be read and in the same pipeline, it could be computing the rabin fingerprint and in the next stage it can do the digest check for chunk boundary condition. 
+3 stage pipeline.
+Read byte, compute fingerprint, chunk boundary check
+
+An II of 1 maybe possible, will require bit more maturity of the polynomial shift operation dependency to figure out.
+\item%ii
+\textbf{SHA-256}:\newline
+The entire SHA main loop operating on input chunks coming from CDC could be feasibly pipelined. II in this case would be equal to the no. of cycles it takes to complete hash computation for 1 chunk. The II is restrcited by dependencies of internal
+variables within the subchunk computation. The depth of pipeline is no. of subchunks in an input chunk. 
+\item%iii
+\textbf{Chunk Matching}:\newline
+There aren't really enough tasks here to pipeline sensibly.
+
+\item%iv
+\textbf{LZW Encoding}:\newline
+If the end goal is to fill some kind of input/output buffers while dealing with streaming I/O data, any processes like that could be pipelined pretty well. For any of the internals, though, the logic should be atomic enough that the pipelining approach may not work optimally.
+
+\end{enumerate}%4d Pipeline
+
+\item%e Latency bound
+
+\textbf{CDC}:\newline
+Byte read from memory with one port, 8K cycles latency worst case.
+Computational latency
+Write 8K chunk to memory, a word at a time, 8K/4 = 2K cycles. 
+
+\textbf{SHA:} \newline
+SHA reads 64 bytes into a block, 4 bytes at a time, 16 cycles, 8K/64 =     128 times = 1970 cycles. 
+
+\textbf{Chunk matching:} \newline
+O(n) latency for linear search
+
+\textbf{LZW compression:} \newline
+Chunk data read latency 2K cycles
+Write compressed data to memory: Worst case 2K cycles
+
+\newline
+Therefore, total latency = 8K + 2K + 2K + 2K = 14K cycles per 8KB chunk. 
+\end{enumerate}%4
+
+\item%5
+Our CPU implementation may end up looking rather different than our eventual hardware implementation, as our current plan is to put as many components as we can onto the FPGA for performance purposes. For instance, our current plan for inter-process communciation involves significantly more streaming interfaces than we currently use.\newline\newline
+That said, our current implementation is functional; we have a CPU version of Rabin Fingerprinting, SHA-256, and LZW Compression all implemented. There are some significant gaps; for instance, the LZW implementation just \texttt{malloc}s a whole table space that would be frustratingly sparse, and the hash table for chunk deduplication is just an array which we search through on each iteration.\newline\newline
+Currently, the interfaces between components boil down to shared memory buffers and pointers within them. The program will only LZW-compress the chunks which are not duplicates, which is likely not how we would operate in hardware. Additionally, there are certain tunable parameters that we will likely ship to different locations; for instance, throwing \texttt{CHUNK\_SIZE}-related parameters into a single header file.\newline\newline
+In all though, in terms of getting some of the algorithms together, it's a feasible substitute.
+
+\end{enumerate}%doc
+
+
+\begin{appendices}
+%\section{2m Filter.cpp}\label{2m}
+%\lstinputlisting[language=C]{code/Filter.cpp}
+%\section{1h mmult\_accel.cpp}\label{1hB}
+%\lstinputlisting[language=C]{code/mmult_accel.cpp}
+%\section{1h mmult\_accel.h}\label{1hC}
+%\lstinputlisting[language=C]{code/mmult_accel.h}
+
+
+\end{appendices}
+
+
+
+
+
+\end{document}
