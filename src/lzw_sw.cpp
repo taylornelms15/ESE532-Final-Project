@@ -4,6 +4,7 @@
 #include <string>
 #include <stdint.h>
 #include "lzw_sw.h"
+#include <string.h>
 ///In implementation, this might be a 13-bit or 14-bit type
 #ifndef MAXCHARVAL
 #define MAXCHARVAL 256

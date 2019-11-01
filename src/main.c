@@ -17,12 +17,11 @@ int main(int argc, char *argv[]) {
     FILE *fp = NULL;
     FILE *fp2 = NULL;
     hash = rabin_init();
-    lzw_init();
     SHA256_CTX ctx;
     sha256_init(&ctx);
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
-    uint8_t compress[8192];//TODO: replace this with some kind of max chunk size?
+    uint8_t compress[MAXSIZE];//TODO: replace this with some kind of max chunk size?
 
     if(argc > 1) {
     fp = fopen(argv[1], "r");
@@ -77,15 +76,18 @@ int main(int argc, char *argv[]) {
             printf("\n");
 
             int shaIndex = indexForShaVal(sha_buf);
-            if(sha_index == -1){
+            if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 
                 printf("compress_size: %d\n", compress_size);
+                uint32_t header = compress_size;
+                header <<= 1;
+                fwrite(&header, sizeof(uint32_t), 1, fp2);
                 fwrite(compress, sizeof(uint8_t), compress_size, fp2);
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
-                dupPacket << 1;
+                dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
                 fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
 
@@ -110,7 +112,7 @@ int main(int argc, char *argv[]) {
 
             printf("\n");
             int shaIndex = indexForShaVal(sha_buf);
-            if(sha_index == -1){
+            if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 
                 printf("compress_size: %d\n", compress_size);
@@ -118,7 +120,7 @@ int main(int argc, char *argv[]) {
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
-                dupPacket << 1;
+                dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
                 fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
 

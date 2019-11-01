@@ -5,7 +5,7 @@ CC=g++
 
 all: final_exe
 
-final_exe: sha_256.c rabin.c lzw_sw.cpp main.c
+final_exe: sha_256.c rabin.c lzw_sw.cpp chunkdict.c main.c
 	$(CC) $(CFLAGS) -o $@ $^
    
 #lzw_compress.o: 
