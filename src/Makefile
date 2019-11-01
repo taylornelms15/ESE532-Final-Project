@@ -1,11 +1,11 @@
-CFLAGS+=-Wall -W -ggdb3 -std=gnu99 
+CFLAGS+=-Wall -W -ggdb3 -std=gnu++11
 CC=g++
 
 .PHONY: all clean clean-rabin
 
 all: final_exe
 
-final_exe: sha_256.c rabin.c lzw_sw.cpp main.c 
+final_exe: sha_256.c rabin.c lzw_sw.cpp main.c
 	$(CC) $(CFLAGS) -o $@ $^
    
 #lzw_compress.o: 

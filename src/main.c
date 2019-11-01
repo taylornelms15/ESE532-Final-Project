@@ -22,7 +22,6 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
     uint16_t *compress;
-    unordered_map<string, int> umap;
 
     if(argc > 1) {
     fp = fopen(argv[1], "r");
