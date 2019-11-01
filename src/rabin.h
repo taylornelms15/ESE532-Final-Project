@@ -7,7 +7,7 @@
 #define POLYNOMIAL_DEGREE 53
 #define WINSIZE 64
 #define AVERAGE_BITS 10
-#define MINSIZE (1 * 256)
+#define MINSIZE (1 * 1024)
 #define MAXSIZE (2 * 1024)
 
 struct rabin_t {

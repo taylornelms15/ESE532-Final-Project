@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include<string.h>
+#include<stdio.h>
 #include "sha_256.h"
 
 /****************************** MACROS ******************************/
@@ -85,6 +86,12 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 {
 	WORD i;
 
+    /*printf("Inside sha*****\n");
+    for(int i = 0; i < len; i++) {
+        printf("%c",data[i]);
+    }
+    printf("\n");
+    */
 	for (i = 0; i < len; ++i) {
 		ctx->data[ctx->datalen] = data[i];
 		ctx->datalen++;

@@ -112,7 +112,6 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t *buf, unsigned int len) {
 
         rabin_slide(h, b);
 
-        memcpy((last_chunk.byte + h->count), &b, sizeof(uint8_t));
         h->count++;
         h->pos++;
 
@@ -142,7 +141,7 @@ struct rabin_t *rabin_init(void) {
 
     struct rabin_t *h;
 
-    if ((h = malloc(sizeof(struct rabin_t))) == NULL) {
+    if ((h = (rabin_t *)malloc(sizeof(struct rabin_t))) == NULL) {
         errx(1, "malloc()");
     }
 
