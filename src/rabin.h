@@ -18,6 +18,7 @@ struct rabin_t {
     unsigned int start;
     uint64_t digest;
 };
+typedef struct rabin_t rabin_t;
 
 struct chunk_t {
     unsigned int start;

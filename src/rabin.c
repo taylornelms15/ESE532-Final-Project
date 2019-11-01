@@ -1,6 +1,7 @@
-#include <err.h>
+//#include <err.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "rabin.h"
 
 #define MASK ((1<<AVERAGE_BITS)-1)
@@ -141,8 +142,10 @@ struct rabin_t *rabin_init(void) {
 
     struct rabin_t *h;
 
-    if ((h = (rabin_t *)malloc(sizeof(struct rabin_t))) == NULL) {
-        errx(1, "malloc()");
+    if ((h = (rabin_t*)malloc(sizeof(struct rabin_t))) == NULL) {
+    	printf("Error on rabin_init malloc()\n");
+    	exit(1);
+        //errx(1, "malloc()");
     }
 
     rabin_reset(h);
