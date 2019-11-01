@@ -27,5 +27,5 @@ final_exe: sha_256.c rabin.c lzw_sw.c chunkdict.c main.c
 #
 #clean: clean-rabin
 #
-saaf:
+clean:
 	rm -f rabin.o main.o sha_256.o lzw_sw.o final_exe

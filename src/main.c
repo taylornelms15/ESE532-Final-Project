@@ -80,9 +80,6 @@ int main(int argc, char *argv[]) {
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 
                 printf("compress_size: %d\n", compress_size);
-                uint32_t header = compress_size;
-                header <<= 1;
-                fwrite(&header, sizeof(uint32_t), 1, fp2);
                 fwrite(compress, sizeof(uint8_t), compress_size, fp2);
             }//if not found in table
             else{
@@ -113,8 +110,7 @@ int main(int argc, char *argv[]) {
             printf("\n");
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
-                
+                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress); 
                 printf("compress_size: %d\n", compress_size);
                 fwrite(compress, sizeof(uint8_t), compress_size, fp2);
             }//if not found in table

@@ -8,7 +8,7 @@
 #define WINSIZE 64
 #define AVERAGE_BITS 10
 #define MINSIZE (1 * 1024)
-#define MAXSIZE (2 * 1024)
+#define MAXSIZE (8 * 1024)
 
 struct rabin_t {
     uint8_t window[WINSIZE];
