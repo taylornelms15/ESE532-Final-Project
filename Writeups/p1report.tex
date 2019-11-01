@@ -322,20 +322,10 @@ If the end goal is to fill some kind of input/output buffers while dealing with 
 \end{enumerate}%4
 
 \item%5
-\begin{enumerate}[label=(\alph*)]
-\item%a
-
-\item%b
-
-\item%c
-
-\item%d
-
-\item%e
-
-\item%f
-
-\end{enumerate}%5
+Our CPU implementation may end up looking rather different than our eventual hardware implementation, as our current plan is to put as many components as we can onto the FPGA for performance purposes. For instance, our current plan for inter-process communciation involves significantly more streaming interfaces than we currently use.\newline\newline
+That said, our current implementation is functional; we have a CPU version of Rabin Fingerprinting, SHA-256, and LZW Compression all implemented. There are some significant gaps; for instance, the LZW implementation just \texttt{malloc}s a whole table space that would be frustratingly sparse, and the hash table for chunk deduplication is just an array which we search through on each iteration.\newline\newline
+Currently, the interfaces between components boil down to shared memory buffers and pointers within them. The program will only LZW-compress the chunks which are not duplicates, which is likely not how we would operate in hardware. Additionally, there are certain tunable parameters that we will likely ship to different locations; for instance, throwing \texttt{CHUNK\_SIZE}-related parameters into a single header file.\newline\newline
+In all though, in terms of getting some of the algorithms together, it's a feasible substitute.
 
 \end{enumerate}%doc
 
