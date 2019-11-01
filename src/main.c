@@ -2,30 +2,56 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "rabin.h"
+#include "sha_256.h"
+#include "lzw_sw.h"
+#include "chunkdict.h"
+#include <ff.h>
 
 // 1MiB buffer
 uint8_t buf[1024 * 1024];
 size_t bytes;
 
+unsigned int Load_data(unsigned char * Data)
+{
+  int Size = 1024 * 1024;
+
+  FIL File;
+  unsigned int Bytes_read;
+
+  FRESULT Result = f_open(&File, "Input.bin", FA_READ);
+
+  Result = f_read(&File, Data, Size, &Bytes_read);
+
+
+  return Bytes_read;
+}
+
 int main(int argc, char *argv[]) {
     struct rabin_t *hash;
     FILE *fp = NULL;
+    FILE *fp2 = NULL;
     hash = rabin_init();
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
     unsigned int chunks = 0;
+    BYTE sha_buf[SHA256_BLOCK_SIZE];
+    uint8_t compress[MAXSIZE];//TODO: replace this with some kind of max chunk size?
+    unsigned int bytes_read;
+    //init_platform();
 
-    if(argc > 1) {
-    fp = fopen(argv[1], "r");
-      if(fp == NULL) {
-        printf("File could not be opened. Exiting program!\n");
-        exit(-1);
-      }
-    } else {
-      printf("USAGE: ./rabin-cdc <file to be chunked>\n");
-      exit(0);
-    }
-    while (!feof(fp)) {
-        size_t len = fread(buf, 1, sizeof(buf), fp);
+    FATFS FS;
+
+      f_mount(&FS, "0:/", 0);
+
+      unsigned int len = Load_data(buf);
+
+      FIL File;
+
+        FRESULT Result = f_open(&File, "Output.bin", FA_WRITE | FA_CREATE_ALWAYS);
+        //Check_error(Result != FR_OK, "Could not open output file.");
+
         uint8_t *ptr = buf;
 
         bytes += len;
@@ -44,22 +70,44 @@ int main(int argc, char *argv[]) {
                 last_chunk.start,
                 last_chunk.length,
                 (long long unsigned int)last_chunk.cut_fingerprint);
+    /*        if(chunks == 1) {
+                printf("*********chunks**********");
+                for(int i = 0; i < last_chunk.length; i++) {
+                    printf("%c", buf[last_chunk.start + i]);
+                }
+            }
+            */
+            sha256_init(&ctx);
+            sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
+            sha256_final(&ctx, sha_buf);
 
-           for(int i = 0; i < last_chunk.length; i++) {
-            printf("%c", buf[last_chunk.start + i]);
-           }
+            printf("SHA: ");
+            for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
+                printf("%02x", sha_buf[i]);
 
-          /** sha256_hash(buf[last_chunk.start + i], last_chunk.length); *
+            printf("\n");
 
-           if shaResult in chunkDictionary:
-             send(shaResult)
-           else:
-             send(LZW(rawChunk))
-          **/
+            int shaIndex = indexForShaVal(sha_buf);
+            if(shaIndex == -1){
+                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
+                
+                printf("compress_size: %d\n", compress_size);
+
+                  f_write(&File, compress, compress_size, &bytes_read);
+                  //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+            }//if not found in table
+            else{
+                uint32_t dupPacket = shaIndex;
+                dupPacket <<= 1;
+                dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+                f_write(&File, &dupPacket, 4, &bytes_read);
+                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+
+            }//if found in table
 
             chunks++;
         }
-    }
+    //}
 
     if (rabin_finalize(hash) != NULL) {
         chunks++;
@@ -67,15 +115,32 @@ int main(int argc, char *argv[]) {
             last_chunk.length,
             (long long unsigned int)last_chunk.cut_fingerprint);
 
-          /** sha256_hash(buf[last_chunk.start + i], last_chunk.length); 
-           if shaResult in chunkDictionary:
-             send(shaResult)
-           else:
-             send(LZW(rawChunk))
+            sha256_init(&ctx);
+            sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
+            sha256_final(&ctx, sha_buf);
+            printf("SHA: ");
+            for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
+                printf("%x", sha_buf[i]);
 
-             **/
+            printf("\n");
+            int shaIndex = indexForShaVal(sha_buf);
+            if(shaIndex == -1){
+                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress); 
+                printf("compress_size: %d\n", compress_size);
+                f_write(&File, compress, compress_size, &bytes_read);
+                //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+            }//if not found in table
+            else{
+                uint32_t dupPacket = shaIndex;
+                dupPacket <<= 1;
+                dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+                f_write(&File, &dupPacket, 4, &bytes_read);
+                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+
+            }//if found in table
     }
 
+    f_close(&File);
     unsigned int avg = 0;
     if (chunks > 0)
         avg = bytes / chunks;
