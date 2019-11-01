@@ -6,6 +6,7 @@
 #include "rabin.h"
 #include "sha_256.h"
 #include "lzw_sw.h"
+#include "chunkdict.h"
 
 // 1MiB buffer
 uint8_t buf[1024 * 1024];
@@ -71,21 +72,24 @@ int main(int argc, char *argv[]) {
 
             printf("SHA: ");
             for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
-                printf("%x", sha_buf[i]);
+                printf("%02x", sha_buf[i]);
 
             printf("\n");
 
+            int shaIndex = indexForShaVal(sha_buf);
+            if(sha_index == -1){
+                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
+                
+                printf("compress_size: %d\n", compress_size);
+                fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+            }//if not found in table
+            else{
+                uint32_t dupPacket = shaIndex;
+                dupPacket << 1;
+                dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+                fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
 
-            int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
-            
-            printf("compress_size: %d\n", compress_size);
-            fwrite(compress, compress_size, 1, fp2);
-/*
-           if shaResult in chunkDictionary:
-             send(shaResult)
-           else:
-             send(LZW(rawChunk))
-          **/
+            }//if found in table
 
             chunks++;
         }

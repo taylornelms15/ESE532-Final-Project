@@ -4,9 +4,9 @@
  * Stand-in to represent a "hash table" storing the order in which we output LZW-compressed chunks
  */
 
-#include "sha_256.h"
+#include "chunkdict.h"
 
-#define MAX_CHUNK_NUM (1024)
+#define MAX_CHUNK_NUM (1024)//may want to modify where/how this is declared
 
 typedef struct ShaVal{
 
