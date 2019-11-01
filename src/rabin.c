@@ -103,6 +103,8 @@ void rabin_reset(struct rabin_t *h) {
     h->wpos = 0;
     h->count = 0;
     h->digest = 0;
+    h->start = 0;
+    h->pos = 0;
 
     rabin_slide(h, 1);
 }

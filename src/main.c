@@ -7,10 +7,26 @@
 #include "sha_256.h"
 #include "lzw_sw.h"
 #include "chunkdict.h"
+#include <ff.h>
 
 // 1MiB buffer
 uint8_t buf[1024 * 1024];
 size_t bytes;
+
+unsigned int Load_data(unsigned char * Data)
+{
+  int Size = 1024 * 1024;
+
+  FIL File;
+  unsigned int Bytes_read;
+
+  FRESULT Result = f_open(&File, "Input.bin", FA_READ);
+
+  Result = f_read(&File, Data, Size, &Bytes_read);
+
+
+  return Bytes_read;
+}
 
 int main(int argc, char *argv[]) {
     struct rabin_t *hash;
@@ -22,24 +38,20 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
     uint8_t compress[MAXSIZE];//TODO: replace this with some kind of max chunk size?
+    unsigned int bytes_read;
+    //init_platform();
 
-    if(argc > 1) {
-    fp = fopen(argv[1], "r");
-      if(fp == NULL) {
-        printf("File could not be opened. Exiting program!\n");
-        exit(-1);
-      }
-    fp2 = fopen("Output.txt", "a+");
-      if(fp2 == NULL) {
-        printf("File could not be opened. Exiting program!\n");
-        exit(-1);
-      }
-    } else {
-      printf("USAGE: ./rabin-cdc <file to be chunked>\n");
-      exit(0);
-    }
-    while (!feof(fp)) {
-        size_t len = fread(buf, 1, sizeof(buf), fp);
+    FATFS FS;
+
+      f_mount(&FS, "0:/", 0);
+
+      unsigned int len = Load_data(buf);
+
+      FIL File;
+
+        FRESULT Result = f_open(&File, "Output.bin", FA_WRITE | FA_CREATE_ALWAYS);
+        //Check_error(Result != FR_OK, "Could not open output file.");
+
         uint8_t *ptr = buf;
 
         bytes += len;
@@ -80,19 +92,22 @@ int main(int argc, char *argv[]) {
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 
                 printf("compress_size: %d\n", compress_size);
-                fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+
+                  f_write(&File, compress, compress_size, &bytes_read);
+                  //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-                fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+                f_write(&File, &dupPacket, 4, &bytes_read);
+                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
 
             }//if found in table
 
             chunks++;
         }
-    }
+    //}
 
     if (rabin_finalize(hash) != NULL) {
         chunks++;
@@ -112,17 +127,20 @@ int main(int argc, char *argv[]) {
             if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress); 
                 printf("compress_size: %d\n", compress_size);
-                fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+                f_write(&File, compress, compress_size, &bytes_read);
+                //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-                fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+                f_write(&File, &dupPacket, 4, &bytes_read);
+                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
 
             }//if found in table
     }
 
+    f_close(&File);
     unsigned int avg = 0;
     if (chunks > 0)
         avg = bytes / chunks;
