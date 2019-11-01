@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     sha256_init(&ctx);
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
-    uint16_t *compress;
+    uint8_t compress[8192];//TODO: replace this with some kind of max chunk size?
 
     if(argc > 1) {
     fp = fopen(argv[1], "r");
