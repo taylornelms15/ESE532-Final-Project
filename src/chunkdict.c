@@ -18,11 +18,11 @@ static ShaVal table[MAX_CHUNK_NUM];//table storing our SHA256 hash values
 static int curIndex = 0;//current max index for the table
 
 //If we go a c++ way, could operator overload; likely not necessary
-bool shaValEqual(const ShaVal* a, const ShaVal* b){
+int shaValEqual(const ShaVal* a, const ShaVal* b){
 
-    bool retval = true;
+    int retval = 1;
     for(unsigned char i = 0; i < SHA256_BLOCK_SIZE; i++){
-       if (a->sha_buf[i] != b->sha_buf[i]) retval = false; 
+       if (a->sha_buf[i] != b->sha_buf[i]) retval = 0;
     }//for
     return retval;
 
