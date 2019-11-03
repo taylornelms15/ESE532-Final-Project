@@ -13,6 +13,7 @@
 uint8_t buf[1024 * 1024];
 size_t bytes;
 
+// SD card
 unsigned int Load_data(unsigned char * Data)
 {
   int Size = 1024 * 1024;
