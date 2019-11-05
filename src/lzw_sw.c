@@ -83,7 +83,6 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 		if (currentTableValue != NONEFOUND){
 			curTableRow = currentTableValue;
 			if (iidx == numElements){//fixes a "missing last code" problem
-				//printf("HAD THE ISSUE?\n");
 				outBuffer[oidx++] = curTableRow;
 				break;
 			}
@@ -93,6 +92,10 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 			outBuffer[oidx++] = curTableRow;
 			table[curTableRow][curChar] = oidx + MAXCHARVAL - 1;
 			curTableRow = curChar;//reset back to initial block
+			if (iidx == numElements){//fixes a "missing last code" problem
+				outBuffer[oidx++] = curTableRow;
+				break;
+			}
 		}
 
 	}

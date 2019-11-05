@@ -126,7 +126,6 @@ int main(int argc, char *argv[]) {
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-            	printf("Last chunk length %d\n", last_chunk.length);
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);

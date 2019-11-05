@@ -37,6 +37,7 @@ static int Read_code(void)
 static const std::string Decompress(size_t Size)
 {
   Input_position = 0;
+  //std::cout << "Decompressing string of size " << Size << std::endl;
 
   Code_table.clear();
   for (int i = 0; i < 256; i++)
