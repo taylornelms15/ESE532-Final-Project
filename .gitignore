@@ -1,3 +1,5 @@
 .*.swp
+*.log
 VsWorkspace
 SDxWorkspace
+HlsWorkspace

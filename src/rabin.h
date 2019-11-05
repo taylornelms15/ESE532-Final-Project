@@ -2,13 +2,13 @@
 #define _RABIN_H
 
 #include <stdint.h>
+#include "common.h"
 
 #define POLYNOMIAL 0x3DA3358B4DC173LL
 #define POLYNOMIAL_DEGREE 53
 #define WINSIZE 64
 #define AVERAGE_BITS 10
-#define MINSIZE (1 * 1024)
-#define MAXSIZE (8 * 1024)
+
 
 struct rabin_t {
     uint8_t window[WINSIZE];

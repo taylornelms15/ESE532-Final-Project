@@ -7,7 +7,9 @@
 #ifndef LZW_SW_H
 #define LZW_SW_H
 
-#define MAXCHUNKLENGTH 8192
+#include "common.h"
+
+#define MAXCHUNKLENGTH (MAXSIZE)
 #define MAXCHARVAL 256
 #define NONEFOUND 0xFFFF
 

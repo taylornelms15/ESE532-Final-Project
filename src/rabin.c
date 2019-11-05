@@ -57,7 +57,8 @@ static void calc_tables(void) {
     //  = H(    0     || b_1 || ...     || b_w)
     //
     // Afterwards a new byte can be shifted in.
-    for (int b = 0; b < 256; b++) {
+	int b;
+    for (b = 0; b < 256; b++) {
         uint64_t hash = 0;
 
         hash = append_byte(hash, (uint8_t)b, POLYNOMIAL);
@@ -69,7 +70,7 @@ static void calc_tables(void) {
 
     // calculate table for reduction mod Polynomial
     int k = deg(POLYNOMIAL);
-    for (int b = 0; b < 256; b++) {
+    for (b = 0; b < 256; b++) {
         // mod_table[b] = A | B, where A = (b(x) * x^k mod pol) and  B = b(x) * x^k
         //
         // The 8 bits above deg(Polynomial) determine what happens next and so

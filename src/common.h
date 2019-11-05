@@ -7,8 +7,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define ENCODING 1//set to one to run main.c, set to 0 to run Decoder.cpp
+#define MINSIZE (1 * 1024)
+#define MAXSIZE (8 * 1024)
 
+#define MAXINPUTFILESIZE (1 << 28)//270MB
 
 
 

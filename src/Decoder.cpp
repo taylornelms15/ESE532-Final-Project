@@ -62,11 +62,7 @@ static const std::string Decompress(size_t Size)
   return Output;
 }
 
-#if ENCODING
-int fakemain(int Parameter_count, char * Parameters[])
-#else
 int main(int Parameter_count, char * Parameters[])
-#endif
 {
   /*
   if (Parameter_count < 3)

@@ -16,7 +16,7 @@
 #include "common.h"
 
 // 1MiB buffer
-uint8_t buf[1024 * 1024];
+uint8_t* buf;
 size_t bytes;
 
 void Check_error(int Error, const char * Message)
@@ -28,10 +28,17 @@ void Check_error(int Error, const char * Message)
   }
 }
 
+void Exit_with_error(void)
+{
+  perror(NULL);
+  exit(EXIT_FAILURE);
+}
+
+
 
 unsigned int Load_data(unsigned char * Data)
 {
-  unsigned int Size = 1024 * 1024;
+  unsigned int Size = MAXINPUTFILESIZE;
   unsigned int Bytes_read;
 
 #ifdef __SDSCC__
@@ -45,7 +52,7 @@ unsigned int Load_data(unsigned char * Data)
 
   Check_error(f_close(&File) != FR_OK, "Could not close input file.");
 #else
-  FILE * File = fopen("/Users/taylo/csworkspace/ese532/final/src/ESE532.tar", "rb");
+  FILE * File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/gtk+.tar", "rb");
   if (File == NULL)
     Exit_with_error();
 
@@ -59,12 +66,8 @@ unsigned int Load_data(unsigned char * Data)
   return Bytes_read;
 }
 
-
-#if ENCODING
 int main(int argc, char *argv[]) {
-#else
-int fakeMain(int argc, char* argv[]){
-#endif
+
 	struct rabin_t *hash;
     hash = rabin_init();
     SHA256_CTX ctx;
@@ -80,8 +83,8 @@ int fakeMain(int argc, char* argv[]){
   Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
 #endif
 
-
-      unsigned int len = Load_data(buf);
+  buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
+  unsigned int len = Load_data(buf);
 
 #ifdef __SDSCC__
       FIL File;
@@ -90,7 +93,7 @@ int fakeMain(int argc, char* argv[]){
         Check_error(Result != FR_OK, "Could not open output file.");
 
 #else
-        FILE* File = fopen("/Users/taylo/csworkspace/ese532/final/src/ESE532.out", "wb");
+        FILE* File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/gtk+.tar.out", "wb");
         if (File == NULL)
           Exit_with_error();
 
@@ -109,42 +112,29 @@ int fakeMain(int argc, char* argv[]){
             len -= remaining;
             ptr += remaining;
 
-            //printf("%d %d %016llx\n \n",
-            //    last_chunk.start,
-            //    last_chunk.length,
-            //    (long long unsigned int)last_chunk.cut_fingerprint);
-            //  if(chunks == 1) {
-            //    printf("*********chunks**********");
-            //    for(int i = 0; i < last_chunk.length; i++) {
-            //        printf("%c", buf[last_chunk.start + i]);
-            //    }
-            //}
-
             sha256_init(&ctx);
             sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
             sha256_final(&ctx, sha_buf);
-
-            //printf("SHA: ");
-            //for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
-            //    printf("%02x", sha_buf[i]);
-
-            //printf("\n");
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 
-                //printf("compress_size: %d\n", compress_size);
-
+#ifdef __SDSCC__
                   f_write(&File, compress, compress_size, &bytes_read);
-                  //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+#else
+                  fwrite(compress, sizeof(uint8_t), compress_size, File);
+#endif
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+#ifdef __SDSCC__
                 f_write(&File, &dupPacket, 4, &bytes_read);
-                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+#else
+                fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+#endif
 
             }//if found in table
 
@@ -169,21 +159,32 @@ int fakeMain(int argc, char* argv[]){
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress); 
-                //printf("compress_size: %d\n", compress_size);
+#ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);
-                //fwrite(compress, sizeof(uint8_t), compress_size, fp2);
+#else
+                fwrite(compress, sizeof(uint8_t), compress_size, File);
+#endif
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+#ifdef __SDSCC__
                 f_write(&File, &dupPacket, 4, &bytes_read);
-                //fwrite(&dupPacket, sizeof(uint32_t), 1, fp2);
+#else
+                fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+#endif
 
             }//if found in table
     }
 
+#ifdef __SDSCC
     f_close(&File);
+#else
+    fclose(File);
+#endif
+    free(buf);
+
     unsigned int avg = 0;
     if (chunks > 0)
         avg = bytes / chunks;
