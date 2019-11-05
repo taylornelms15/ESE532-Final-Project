@@ -52,9 +52,11 @@ unsigned int Load_data(unsigned char * Data)
 
   Check_error(f_close(&File) != FR_OK, "Could not close input file.");
 #else
-  FILE * File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/gtk+.tar", "rb");
-  if (File == NULL)
-    Exit_with_error();
+  FILE * File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.tar", "rb");
+  if (File == NULL){
+	  printf("Could not open input file\n");
+      Exit_with_error();
+  }
 
   Bytes_read = fread(Data, 1, Size, File);
   if (Bytes_read < 1)
@@ -74,33 +76,31 @@ int main(int argc, char *argv[]) {
     sha256_init(&ctx);
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
-    uint8_t compress[MAXSIZE];//TODO: replace this with some kind of max chunk size?
-    unsigned int bytes_read;
+    uint8_t compress[MAXSIZE];
 
 #ifdef __SDSCC__
-  FATFS FS;
+    FATFS FS;
 
-  Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
+    Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
 #endif
 
-  buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
-  unsigned int len = Load_data(buf);
+    unsigned int len = Load_data(buf);
 
 #ifdef __SDSCC__
-      FIL File;
+    FIL File;
 
-        FRESULT Result = f_open(&File, "Output.bin", FA_WRITE | FA_CREATE_ALWAYS);
-        Check_error(Result != FR_OK, "Could not open output file.");
+    FRESULT Result = f_open(&File, "Output.bin", FA_WRITE | FA_CREATE_ALWAYS);
+    Check_error(Result != FR_OK, "Could not open output file.");
 
 #else
-        FILE* File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/gtk+.tar.out", "wb");
-        if (File == NULL)
-          Exit_with_error();
+    FILE* File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.tar.out", "wb");
+    if (File == NULL)
+        Exit_with_error();
 
 #endif
 
-        uint8_t *ptr = buf;
-        bytes += len;
+    uint8_t *ptr = buf;
+    bytes += len;
 
         while (1) {
             int remaining = rabin_next_chunk(hash, ptr, len);
@@ -139,43 +139,37 @@ int main(int argc, char *argv[]) {
             }//if found in table
 
             chunks++;
-        }
-    //}
+        }//while(true)
 
     if (rabin_finalize(hash) != NULL) {
         chunks++;
-        //printf("%d %016llx\n",
-        //    last_chunk.length,
-        //    (long long unsigned int)last_chunk.cut_fingerprint);
 
-            sha256_init(&ctx);
-            sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
-            sha256_final(&ctx, sha_buf);
-            //printf("SHA: ");
-            //for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
-            //    printf("%x", sha_buf[i]);
+        sha256_init(&ctx);
+        sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length);
+        sha256_final(&ctx, sha_buf);
 
-            printf("\n");
-            int shaIndex = indexForShaVal(sha_buf);
-            if(shaIndex == -1){
-                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress); 
+
+        printf("\n");
+        int shaIndex = indexForShaVal(sha_buf);
+        if(shaIndex == -1){
+            int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #ifdef __SDSCC__
-                f_write(&File, compress, compress_size, &bytes_read);
+            f_write(&File, compress, compress_size, &bytes_read);
 #else
-                fwrite(compress, sizeof(uint8_t), compress_size, File);
+            fwrite(compress, sizeof(uint8_t), compress_size, File);
 #endif
-            }//if not found in table
-            else{
-                uint32_t dupPacket = shaIndex;
-                dupPacket <<= 1;
-                dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
+        }//if not found in table
+        else{
+            uint32_t dupPacket = shaIndex;
+            dupPacket <<= 1;
+            dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
 #ifdef __SDSCC__
-                f_write(&File, &dupPacket, 4, &bytes_read);
+            f_write(&File, &dupPacket, 4, &bytes_read);
 #else
-                fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+            fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #endif
 
-            }//if found in table
+        }//if found in table
     }
 
 #ifdef __SDSCC
