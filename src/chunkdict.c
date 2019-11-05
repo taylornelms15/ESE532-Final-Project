@@ -61,7 +61,9 @@ int indexForShaVal(const BYTE input[SHA256_BLOCK_SIZE]){
     }//for
 
     if(foundIndex == -1){
+#ifdef DEBUG
         printShaVal(compare);
+#endif
         table[curIndex++] = compare;
     }//if
 
