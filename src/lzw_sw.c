@@ -85,7 +85,7 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 	///index of the outBuffer element we're writing
 	int oidx = 0;
 
-    printf("numElements: %d\n", numElements);
+    //printf("numElements: %d\n", numElements);
 	int curTableRow = input[iidx++];
 	while (iidx < numElements) {
 		uint8_t curChar = input[iidx++];
@@ -102,9 +102,9 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 
 	}
 
-    printf("oidx: %d\n", oidx);
+    //printf("oidx: %d\n", oidx);
     int bytesOutput = xferBufferToOutput(outBuffer, output, oidx);
-    printf("Ending bytes: %d\n", bytesOutput);
+    //printf("Ending bytes: %d\n", bytesOutput);
 	return bytesOutput;
 	
 
