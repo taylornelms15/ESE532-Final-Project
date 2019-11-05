@@ -18,6 +18,8 @@
 // 1MiB buffer
 uint8_t* buf;
 size_t bytes;
+static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
+static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
 
 void Check_error(int Error, const char * Message)
 {
@@ -52,15 +54,17 @@ unsigned int Load_data(unsigned char * Data)
 
   Check_error(f_close(&File) != FR_OK, "Could not close input file.");
 #else
-  FILE * File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.tar", "rb");
+  FILE * File = fopen(infileName, "rb");
   if (File == NULL){
 	  printf("Could not open input file\n");
       Exit_with_error();
   }
 
   Bytes_read = fread(Data, 1, Size, File);
-  if (Bytes_read < 1)
-    Exit_with_error();
+  if (Bytes_read < 1){
+	  printf("None read, result %d\n", Bytes_read);
+      Exit_with_error();
+  }
 
   if (fclose(File) != 0)
     Exit_with_error();
@@ -77,6 +81,9 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
     uint8_t compress[MAXSIZE];
+    printf("Starting main function\n");
+
+    buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
 
 #ifdef __SDSCC__
     FATFS FS;
@@ -93,7 +100,7 @@ int main(int argc, char *argv[]) {
     Check_error(Result != FR_OK, "Could not open output file.");
 
 #else
-    FILE* File = fopen("/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.tar.out", "wb");
+    FILE* File = fopen(outfileName, "wb");
     if (File == NULL)
         Exit_with_error();
 
@@ -117,13 +124,13 @@ int main(int argc, char *argv[]) {
             sha256_final(&ctx, sha_buf);
 
             int shaIndex = indexForShaVal(sha_buf);
+            printf("indexForShaResult %d\n", shaIndex);
             if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
-                
 #ifdef __SDSCC__
-                  f_write(&File, compress, compress_size, &bytes_read);
+                f_write(&File, compress, compress_size, &bytes_read);
 #else
-                  fwrite(compress, sizeof(uint8_t), compress_size, File);
+                fwrite(compress, sizeof(uint8_t), compress_size, File);
 #endif
             }//if not found in table
             else{
@@ -149,8 +156,8 @@ int main(int argc, char *argv[]) {
         sha256_final(&ctx, sha_buf);
 
 
-        printf("\n");
         int shaIndex = indexForShaVal(sha_buf);
+        printf("indexForShaResult %d\n", shaIndex);
         if(shaIndex == -1){
             int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #ifdef __SDSCC__

@@ -64,25 +64,25 @@ static const std::string Decompress(size_t Size)
 
 int main(int Parameter_count, char * Parameters[])
 {
-  /*
+  
   if (Parameter_count < 3)
   {
     std::cout << "Usage: " << Parameters[0] << " <Compressed file> <Decompressed file>\n";
     return EXIT_SUCCESS;
   }
-  */
+  
 
 
-  //Input.open(Parameters[1], std::ios::binary);
-  Input.open("Output.bin", std::ios::binary);
+  Input.open(Parameters[1], std::ios::binary);
+  //Input.open("Output.bin", std::ios::binary);
   if (!Input.good())
   {
     std::cerr << "Could not open input file.\n";
     return EXIT_FAILURE;
   }
 
-  //std::ofstream Output(Parameters[2], std::ios::binary);
-  std::ofstream Output("InputDecode.bin", std::ios::binary);
+  std::ofstream Output(Parameters[2], std::ios::binary);
+  //std::ofstream Output("InputDecode.bin", std::ios::binary);
   if (!Output.good())
   {
     std::cerr << "Could not open output file.\n";

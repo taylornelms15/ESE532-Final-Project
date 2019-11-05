@@ -6,6 +6,7 @@
 #define CHUNKDICT_H
 
 #include "sha_256.h"
+#include "common.h"
 
 
 int indexForShaVal(const BYTE input[SHA256_BLOCK_SIZE]);
