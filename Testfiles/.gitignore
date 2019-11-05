@@ -1,3 +1,4 @@
 *.out
 *.decode
+*.dat
 gtk*
