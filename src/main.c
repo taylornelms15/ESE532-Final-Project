@@ -124,7 +124,6 @@ int main(int argc, char *argv[]) {
             sha256_final(&ctx, sha_buf);
 
             int shaIndex = indexForShaVal(sha_buf);
-            printf("indexForShaResult %d\n", shaIndex);
             if(shaIndex == -1){
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #ifdef __SDSCC__
@@ -157,7 +156,6 @@ int main(int argc, char *argv[]) {
 
 
         int shaIndex = indexForShaVal(sha_buf);
-        printf("indexForShaResult %d\n", shaIndex);
         if(shaIndex == -1){
             int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #ifdef __SDSCC__

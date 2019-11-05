@@ -63,10 +63,10 @@ int xferBufferToOutput(const uint16_t* buffer, uint8_t* output, int numElements)
 
     }//for each buffer entry
 
+    if(boundary == 0) outIndex -= 1;
+
     uint32_t numOutput = outIndex + 1;
     uint32_t header = (numOutput - 4) << 1;//bit 0 is 0 because LZW chunk, the rest is the size of the data. Subtracting 4 to get "size of LZW" part sans header
-    header &= 0xFFFFFFFE;//make sure that last bit is 0
-    printf("Header marks chunk size as %d\n", header);
     memcpy((void*) &output[0], &header, 1 * sizeof(uint32_t));//put header into the top of the output table
 
 
