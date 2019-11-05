@@ -42,12 +42,12 @@ static const std::string Decompress(size_t Size)
   for (int i = 0; i < 256; i++)
     Code_table.push_back(std::string(1, (char) i));
 
-  int Old = Read_code();
+  int Old = Read_code();//int with bottom 13 bytes representing our code
   std::string Symbol(1, Old);
   std::string Output = Symbol;
   while (Input_position / 8 < Size - 1)
   {
-    int New = Read_code();
+    int New = Read_code();//int with bottom 13 bytes representing our code
     std::string Symbols;
     if (New >= (int) Code_table.size())
       Symbols = Code_table[Old] + Symbol;

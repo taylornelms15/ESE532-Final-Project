@@ -3,19 +3,8 @@
 #include <stdint.h>
 #include "lzw_sw.h"
 #include <string.h>
-///In implementation, this might be a 13-bit or 14-bit type
-#ifndef MAXCHARVAL
-#define MAXCHARVAL 256
-#endif
 
-#ifndef MAXCHUNKLENGTH
-#define MAXCHUNKLENGTH 8192
-#endif
-
-#ifndef NONEFOUND
-#define NONEFOUND 0xFFFF
-#endif
-
+//in implementation, may be able to trim to smaller data type
 static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
 
 /**
@@ -87,13 +76,17 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 	///index of the outBuffer element we're writing
 	int oidx = 0;
 
-    //printf("numElements: %d\n", numElements);
 	int curTableRow = input[iidx++];
 	while (iidx < numElements) {
 		uint8_t curChar = input[iidx++];
 		uint16_t currentTableValue = table[curTableRow][curChar];
 		if (currentTableValue != NONEFOUND){
 			curTableRow = currentTableValue;
+			if (iidx == numElements){//fixes a "missing last code" problem
+				printf("HAD THE ISSUE?\n");
+				outBuffer[oidx++] = curTableRow;
+				break;
+			}
 			continue;
 		}
 		else {

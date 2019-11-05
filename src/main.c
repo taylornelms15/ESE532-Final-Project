@@ -18,8 +18,8 @@
 // 1MiB buffer
 uint8_t* buf;
 size_t bytes;
-static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
-static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.txt";
+static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.dat";
 
 void Check_error(int Error, const char * Message)
 {
@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef __SDSCC__
     FATFS FS;
+    unsigned int bytes_read;
 
     Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
 #endif
