@@ -55,6 +55,21 @@
 
 \item%4
 
+\textbf{Axis:} $H$, Number of bits in hash of SHA value for storing SHA values
+\newline
+\textbf{Challenge:} Effectively storing mapping between SHA values of previous chunks and the chunk index
+\newline
+\textbf{Opportunity:} Tune hash table size to reduce conflicts but also remain compact
+\newline
+\textbf{Continuum:} Could be any small number of bits (call it $5$ as a low value) through $256$ for the full SHA value.
+\newline
+\textbf{Equation for Benefit:}
+\[
+\texttt{numRows }C=2^H
+\]
+\[
+\texttt{probCollision}={N \choose m}\left(\frac{1}{C}\right)^m \left(1 - \frac{1}{C}\right)^{N-m}
+\]
 
 \item%5
 
