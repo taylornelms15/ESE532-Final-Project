@@ -50,7 +50,7 @@ unsigned int Load_data(unsigned char * Data)
   Check_error(Result != FR_OK, "Could not open input file.");
 
   Result = f_read(&File, Data, Size, &Bytes_read);
-  Check_error(Result != FR_OK || Bytes_read != Size, "Could not read input file.");
+  Check_error(Result != FR_OK, "Could not read input file.");
 
   Check_error(f_close(&File) != FR_OK, "Could not close input file.");
 #else
