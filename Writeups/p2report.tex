@@ -108,6 +108,15 @@ Note: there are a number of things this change would affect, which is also highl
 
 \item%10
 
+\textbf{Axis:} $N$, Number of bytes at a time transfered to CDC unit
+\newline
+\textbf{Challenge:} Balance memory transfer overhead against memory storage for incoming data
+\newline
+\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational loa
+\newline
+\textbf{Continuum:} $1$ to $1MB$ (this could be a fake limit)
+\newline
+\textbf{Equation for Benefit:} $\texttt{memTransferTime}_{total} = \frac{\texttt{totalInput}}{N}*\left(\texttt{memTransferOverhead} + N*\texttt{memTransferRate}    \right)$
 
 \item%11
 
