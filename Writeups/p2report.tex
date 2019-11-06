@@ -120,6 +120,15 @@ Note: there are a number of things this change would affect, which is also highl
 
 \item%11
 
+\textbf{Axis:} $D_L$, Pipeline depth into LZW implementation
+\newline
+\textbf{Challenge:} Reduce chances of idle LZW unit
+\newline
+\textbf{Opportunity:} Lengthen pipeline depth so that variable chunk size does not prevent parallel execution and effective pipelining between CDC and LZW
+\newline
+\textbf{Continuum:} $1$ byte to $1$MB
+\newline
+\textbf{Equation for Benefit:} Likely complex and related to a lot of interlocking features (no equation provided)
 
 \item%12
 
