@@ -18,6 +18,7 @@
 \section{Design Space Axes}
 \begin{enumerate}
 \item%1
+
 \textbf{Axis:} $S$, Number of SHA-256 hardware units
 \newline
 \textbf{Challenge:} Improving throughput of hashing step
@@ -30,9 +31,27 @@
 
 \item%2
 
+\textbf{Axis:} $L$, Number of LZW hardware units
+\newline
+\textbf{Challenge:} Improving throughput of LZW step
+\newline
+\textbf{Opportunity:} Send chunks to rotating LZE unit index to allow for parallel execution
+\newline
+\textbf{Continuum:} Anywhere from $1$ to however many of our hardware LZW units will fit on the FPGA (BRAM likely limiting factor)
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(L\right)=S*\texttt{singleLZWUnitThroughput}$
 
 \item%3
 
+\textbf{Axis:} $Z$, Design choice for LZW hash table unit
+\newline
+\textbf{Challenge:} Allow for efficient access of code-table for LZW step while fitting within hardware specifications
+\newline
+\textbf{Opportunity:} Use trees or associative memories (or both) to allow for low cycle count for finding relevant table entry
+\newline
+\textbf{Continuum:} $Z\in\{$Tree with Dense RAM, Tree with Fully Associative Memory, Tree with Tree, Tree with Hybrid$\}$
+\newline
+\textbf{Equation for Benefit:} Slide 65 from Day 17 has the relevant tradeoff chart, with implied \texttt{implementation\_complexity} parameter to consider.
 
 \item%4
 
