@@ -17,7 +17,7 @@ static int deg(uint64_t p) {
     uint64_t mask = 0x8000000000000000LL;
 
     for (int i = 0; i < 64; i++) {
-        if ((mask & p) > 0) {
+        if ((mask & p) > 0) {                                       
             return 63 - i;
         }
 
@@ -32,7 +32,7 @@ static uint64_t mod(uint64_t x, uint64_t p) {
     while (deg(x) >= deg(p)) {
         unsigned int shift = deg(x) - deg(p);
 
-        x = x ^ (p << shift);
+        x = x ^ (p << shift);               //-------deg(p) can be reused without recomputation.
     }
 
     return x;
@@ -90,7 +90,7 @@ void rabin_append(struct rabin_t *h, uint8_t b) {
 }
 
 void rabin_slide(struct rabin_t *h, uint8_t b) {
-    uint8_t out = h->window[h->wpos];
+    uint8_t out = h->window[h->wpos];           //h->wpos can be reused
     h->window[h->wpos] = b;
     h->digest = (h->digest ^ out_table[out]);
     h->wpos = (h->wpos +1 ) % WINSIZE;
@@ -98,6 +98,7 @@ void rabin_slide(struct rabin_t *h, uint8_t b) {
 }
 
 void rabin_reset(struct rabin_t *h) {
+    //HLS loop unroll
     for (int i = 0; i < WINSIZE; i++)
         h->window[i] = 0;
     h->digest = 0;
@@ -119,7 +120,7 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t *buf, unsigned int len) {
         h->count++;
         h->pos++;
 
-        if ((h->count >= MINSIZE && ((h->digest & MASK) == 0)) || h->count >= MAXSIZE) {
+        if ((h->count >= MINSIZE && ((h->digest & MASK) == 0)) || h->count >= MAXSIZE) {    //Reuse h->count
             last_chunk.start = h->start;
             last_chunk.length = h->count;
             last_chunk.cut_fingerprint =  h->digest;
