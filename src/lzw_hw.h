@@ -9,7 +9,7 @@
 #include "common.h"
 
 
-
+#define MAXCHARVAL 256
 
 
 
