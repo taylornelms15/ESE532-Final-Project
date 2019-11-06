@@ -19,6 +19,24 @@
 \begin{enumerate}
 \item%1
 
+\textbf{CDC:}
+
+\item%1
+
+\item%2
+
+\item%3
+
+\item%4
+
+\item%5
+
+\item%6
+
+
+\textbf{SHA:}
+\item%1
+
 \textbf{Axis:} $S$, Number of SHA-256 hardware units
 \newline
 \textbf{Challenge:} Improving throughput of hashing step
@@ -31,6 +49,49 @@
 
 \item%2
 
+\textbf{Axis:} $K$, No. of SHA sub-chunk computation unit for computing on 64 byte sub-chunks
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Send sub chunks of 64 bytes to sub-chunk computation units for parallel execution and each stores its result which can all be added to get the final hash values
+\newline
+\textbf{Continuum:} Anywhere from $1$ to chunk size divided by 64 bytes(size of 1 sub-chunk).  
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=K*\texttt{singleSHASubUnitThroughput}$
+
+\item%3
+
+\textbf{Axis:} $P$, Type of memory(units of partitioned memory) to store the input chunk data of SHA
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Partition the input chunk array so that they can be read simultaneously to send over to sub-chunk computation unit
+\newline
+\textbf{Continuum:} Anywhere from a depth of $1$ to $64$ which is the sub-chunk size so that each sub-chunk input data can be read from memory simultaneously. Makes more sense to have a depth of 128 because there are 2 ports and that's how input data for computation of 2 sub chunks can be read simulatneously.    
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=P*\texttt{singleChunkMemReadTime}$
+
+\item%4
+
+\textbf{Axis:} $M$, Type of memory to store the hash values  
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Partition the array storing eight 32-bit values so that they can be read/written simultaneously
+\newline
+\textbf{Continuum:} Anywhere from $1$ to $8$.  
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=M*\texttt{singleMemRead/Write}$
+
+\item%5
+
+
+\item%6
+
+
+\textbf{LZW:}
+\item%1
+
 \textbf{Axis:} $L$, Number of LZW hardware units
 \newline
 \textbf{Challenge:} Improving throughput of LZW step
@@ -41,7 +102,7 @@
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(L\right)=S*\texttt{singleLZWUnitThroughput}$
 
-\item%3
+\item%2
 
 \textbf{Axis:} $Z$, Design choice for LZW hash table unit
 \newline
@@ -52,6 +113,83 @@
 \textbf{Continuum:} $Z\in\{$Tree with Dense RAM, Tree with Fully Associative Memory, Tree with Tree, Tree with Hybrid$\}$
 \newline
 \textbf{Equation for Benefit:} Slide 65 from Day 17 has the relevant tradeoff chart, with implied \texttt{implementation\_complexity} parameter to consider.
+
+\item%3
+
+\textbf{Axis:} $II_L$, Pipelining II for LZW hardware implementation
+\newline
+\textbf{Challenge:} Allow for quick compression algorithm
+\newline
+\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational load
+\newline
+\textbf{Continuum:} $1$ to \texttt{MAX\_CHUNK\_SIZE}
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(\texttt{LZW}\right)=\frac{1 byte}{II_L}$
+
+\item%4
+
+\textbf{Axis:} $W_L$, LZW compression window size
+\newline
+\textbf{Challenge:} Cut down on LZW memory requirements
+\newline
+\textbf{Opportunity:} Restructure how encoding/decoding interprets data to reduce conceptual table depth from \texttt{MAX\_CHUNK\_SIZE} rows down to some smaller $W_L$
+\newline
+\textbf{Continuum:} \texttt{MAX\_CHUNK\_SIZE} to $1$ (the latter of which would make it stop being compression)
+\newline
+\textbf{Equation for Benefit:} $\texttt{memRequirements}_{LZW} *= \frac{W_L}{\texttt{MAX\_CHUNK\_SIZE}}$\newline
+Note: there are a number of things this change would affect, which is also highly dependent on $Z$ (defined above). We will likely not change this, but it is a parameter that could be tuned.
+
+\item%5
+
+\textbf{Axis:} $D_L$, Pipeline depth into LZW implementation
+\newline
+\textbf{Challenge:} Reduce chances of idle LZW unit
+\newline
+\textbf{Opportunity:} Lengthen pipeline depth so that variable chunk size does not prevent parallel execution and effective pipelining between CDC and LZW
+\newline
+\textbf{Continuum:} $1$ byte to $1$MB
+\newline
+\textbf{Equation for Benefit:} Likely complex and related to a lot of interlocking features (no equation provided)
+
+\item%6
+
+
+\textbf{Interfacing:}
+\item%1
+
+\textbf{Axis:} $N$, Number of bytes at a time transfered to CDC unit
+\newline
+\textbf{Challenge:} Balance memory transfer overhead against memory storage for incoming data
+\newline
+\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational loa
+\newline
+\textbf{Continuum:} $1$ to $1MB$ (this could be a fake limit)
+\newline
+\textbf{Equation for Benefit:} $\texttt{memTransferTime}_{total} = \frac{\texttt{totalInput}}{N}*\left(\texttt{memTransferOverhead} + N*\texttt{memTransferRate}    \right)$
+
+\item%2
+
+\textbf{Axis:} $$, Memory requirement for sending data from CDC to SHA and LZW
+\newline
+\textbf{Challenge:} Reduce the amount of memory required to save chunk data after CDC to be input into SHA and LZW which could be 8KB in the worst case.
+\newline
+\textbf{Opportunity:} Stream the chunk data from CDC into LZW and SHA
+\newline
+\textbf{Continuum:} memory requirement for streaming data could vary from using just 1 byte to a few bytes of FIFO.  
+\newline
+\textbf{Equation for Benefit:} Saves memory from using MAX_CHUNK($8$KB) amount of memory to just a few bytes
+
+\item%3
+
+\textbf{Axis:} $$, Granularity of data that can be sent from one unit to the next in the application flow
+\newline
+\textbf{Challenge:} Reduce the time spent on waiting for input until the previous stage is done computing its output  
+\newline
+\textbf{Opportunity:} Use the DATAFLOW pragma to make use of the input data as soon as it is available from the previous stage 
+\newline
+\textbf{Continuum:} Could stream one stage's output to next stage's input with a granularity of chunk size to sending data as soon as $1$ byte is available 
+\newline
+\textbf{Equation for Benefit:} saves on time spent in waiting for the input data to be available as now it can start operating as soon as $1$ byte of input data is available
 
 \item%4
 
@@ -70,93 +208,6 @@
 \[
 \texttt{probCollision}={N \choose m}\left(\frac{1}{C}\right)^m \left(1 - \frac{1}{C}\right)^{N-m}
 \]
-
-\item%5
-
-\textbf{Axis:} $K$, No. of sub-chunk computation unit for computing on 64 byte sub-chunks
-\newline
-\textbf{Challenge:} Improving throughput of hashing step
-\newline
-\textbf{Opportunity:} Send sub chunks of 64 bytes to sub-chunk computation units for parallel execution and each stores its result which can all be added to get the final hash values
-\newline
-\textbf{Continuum:} Anywhere from $1$ to chunk size divided by 64 bytes(size of 1 sub-chunk).  
-\newline
-\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=K*\texttt{singleSHASubUnitThroughput}$
-
-\item%6
-
-\textbf{Axis:} $P$, Type of memory(units of partitioned memory) to store the input chunk data
-\newline
-\textbf{Challenge:} Improving throughput of hashing step
-\newline
-\textbf{Opportunity:} Partition the input chunk array so that they can be read simultaneously to send over to sub-chunk computation unit
-\newline
-\textbf{Continuum:} Anywhere from a depth of $1$ to $64$ which is the sub-chunk size so that each sub-chunk input data can be read from memory simultaneously. Makes more sense to have a depth of 128 because there are 2 ports and that's how input data for computation of 2 sub chunks can be read simulatneously.    
-\newline
-\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=P*\texttt{singleChunkMemReadTime}$
-
-\item%7
-
-\textbf{Axis:} $M$, Type of memory to store the hash values  
-\newline
-\textbf{Challenge:} Improving throughput of hashing step
-\newline
-\textbf{Opportunity:} Partition the array storing eight 32-bit values so that they can be read/written simultaneously
-\newline
-\textbf{Continuum:} Anywhere from $1$ to $8$.  
-\newline
-\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=M*\texttt{singleMemRead/Write}$
-
-\item%8
-
-\textbf{Axis:} $II_L$, Pipelining II for LZW hardware implementation
-\newline
-\textbf{Challenge:} Allow for quick compression algorithm
-\newline
-\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational load
-\newline
-\textbf{Continuum:} $1$ to \texttt{MAX\_CHUNK\_SIZE}
-\newline
-\textbf{Equation for Benefit:} \texttt{Throughput}$\left(\texttt{LZW}\right)=\frac{1 byte}{II_L}$
-
-\item%9
-
-\textbf{Axis:} $W_L$, LZW compression window size
-\newline
-\textbf{Challenge:} Cut down on LZW memory requirements
-\newline
-\textbf{Opportunity:} Restructure how encoding/decoding interprets data to reduce conceptual table depth from \texttt{MAX\_CHUNK\_SIZE} rows down to some smaller $W_L$
-\newline
-\textbf{Continuum:} \texttt{MAX\_CHUNK\_SIZE} to $1$ (the latter of which would make it stop being compression)
-\newline
-\textbf{Equation for Benefit:} $\texttt{memRequirements}_{LZW} *= \frac{W_L}{\texttt{MAX\_CHUNK\_SIZE}}$\newline
-Note: there are a number of things this change would affect, which is also highly dependent on $Z$ (defined above). We will likely not change this, but it is a parameter that could be tuned.
-
-\item%10
-
-\textbf{Axis:} $N$, Number of bytes at a time transfered to CDC unit
-\newline
-\textbf{Challenge:} Balance memory transfer overhead against memory storage for incoming data
-\newline
-\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational loa
-\newline
-\textbf{Continuum:} $1$ to $1MB$ (this could be a fake limit)
-\newline
-\textbf{Equation for Benefit:} $\texttt{memTransferTime}_{total} = \frac{\texttt{totalInput}}{N}*\left(\texttt{memTransferOverhead} + N*\texttt{memTransferRate}    \right)$
-
-\item%11
-
-\textbf{Axis:} $D_L$, Pipeline depth into LZW implementation
-\newline
-\textbf{Challenge:} Reduce chances of idle LZW unit
-\newline
-\textbf{Opportunity:} Lengthen pipeline depth so that variable chunk size does not prevent parallel execution and effective pipelining between CDC and LZW
-\newline
-\textbf{Continuum:} $1$ byte to $1$MB
-\newline
-\textbf{Equation for Benefit:} Likely complex and related to a lot of interlocking features (no equation provided)
-
-\item%12
 
 \end{enumerate}
 
