@@ -83,10 +83,28 @@
 
 \item%8
 
-
+\textbf{Axis:} $II_L$, Pipelining II for LZW hardware implementation
+\newline
+\textbf{Challenge:} Allow for quick compression algorithm
+\newline
+\textbf{Opportunity:} Loosen pipelining constraints for LZW to reduce computational load
+\newline
+\textbf{Continuum:} $1$ to \texttt{MAX\_CHUNK\_SIZE}
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(\texttt{LZW}\right)=\frac{1 byte}{II_L}$
 
 \item%9
 
+\textbf{Axis:} $W_L$, LZW compression window size
+\newline
+\textbf{Challenge:} Cut down on LZW memory requirements
+\newline
+\textbf{Opportunity:} Restructure how encoding/decoding interprets data to reduce conceptual table depth from \texttt{MAX\_CHUNK\_SIZE} rows down to some smaller $W_L$
+\newline
+\textbf{Continuum:} \texttt{MAX\_CHUNK\_SIZE} to $1$ (the latter of which would make it stop being compression)
+\newline
+\textbf{Equation for Benefit:} $\texttt{memRequirements}_{LZW} *= \frac{W_L}{\texttt{MAX\_CHUNK\_SIZE}}$\newline
+Note: there are a number of things this change would affect, which is also highly dependent on $Z$ (defined above). We will likely not change this, but it is a parameter that could be tuned.
 
 \item%10
 
