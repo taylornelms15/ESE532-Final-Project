@@ -73,13 +73,39 @@
 
 \item%5
 
-
+\textbf{Axis:} $K$, No. of sub-chunk computation unit for computing on 64 byte sub-chunks
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Send sub chunks of 64 bytes to sub-chunk computation units for parallel execution and each stores its result which can all be added to get the final hash values
+\newline
+\textbf{Continuum:} Anywhere from $1$ to chunk size divided by 64 bytes(size of 1 sub-chunk).  
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=K*\texttt{singleSHASubUnitThroughput}$
 
 \item%6
 
+\textbf{Axis:} $P$, Type of memory(units of partitioned memory) to store the input chunk data
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Partition the input chunk array so that they can be read simultaneously to send over to sub-chunk computation unit
+\newline
+\textbf{Continuum:} Anywhere from a depth of $1$ to $64$ which is the sub-chunk size so that each sub-chunk input data can be read from memory simultaneously. Makes more sense to have a depth of 128 because there are 2 ports and that's how input data for computation of 2 sub chunks can be read simulatneously.    
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=P*\texttt{singleChunkMemReadTime}$
 
 \item%7
 
+\textbf{Axis:} $M$, Type of memory to store the hash values  
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Partition the array storing eight 32-bit values so that they can be read/written simultaneously
+\newline
+\textbf{Continuum:} Anywhere from $1$ to $8$.  
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=M*\texttt{singleMemRead/Write}$
 
 \item%8
 
