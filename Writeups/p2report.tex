@@ -18,7 +18,15 @@
 \section{Design Space Axes}
 \begin{enumerate}
 \item%1
-
+\textbf{Axis:} $S$, Number of SHA-256 hardware units
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Send chunks to rotating SHA unit index to allow for parallel execution
+\newline
+\textbf{Continuum:} Anywhere from $1$ to however many of our hardware SHA units will fit on the FPGA
+\newline
+\textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=S*\texttt{singleSHAUnitThroughput}$
 
 \item%2
 
