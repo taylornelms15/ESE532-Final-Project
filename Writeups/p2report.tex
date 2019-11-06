@@ -20,15 +20,54 @@
 \item%1
 
 \textbf{CDC:}
-
 \item%1
-
+\textbf{Axis:} Multiple CDC HW resources
+\newline
+\textbf{Challenge:} Improving throughput of chunks created from input file. Ideally linear increase in throughput. 
+\newline
+\textbf{Opportunity:} Not a viable opportunity, as although the input space can be divided up for each resource, the chunks generated from the split stages cannot be utilized by later stages until all chunks in the first resource have been computed.
+\newline
+\textbf{Continuum:} From 1 to how many can fit into fabric. At higher resource numbers, the chunkable data stream would reduce thus creating more overhead in LZW compression. This probably creates diminishing returns.
+\newline
+\textbf{Equation for Benefit:} Total throughput = (No.of resources * Throughput of individual CDC)
 \item%2
-
+\textbf{Axis:} Using vector engines for computation
+\newline
+\textbf{Challenge: } Improving throughput by leveraging independent data level parallelism
+\newline
+\textbf{Opportunity: } CDC design does not give this opportunity because data is operated in a byte wise manner. Secondly, there is no data independent operation as start of next chunk depends on end of previous chunk. Hard to define independent boundaries.
+\newline
+\textbf{Continuum:} Dividing data as 8x16bit blocks or 4x32 etc. 
+\newline
+\textbf{Equation for benefit:} A linear improvement as earlier:
+\newline
+N = no.of vector lanes, then N * computation on a single lane
 \item%3
-
+\textbf{Axis:} Using pipelining stages on microlevel
+\newline
+\textbf{Challenge:} Allowing CPI of 1, removing sequential constraints.
+\newline
+\textbf{Opportunity:} CDC design is great for pipelining since it works at a byte level granularity. Each byte is slid into the window and hash is recalculated for the new window. Finally the rabin digest is compared for a pattern to identify chunk boundary.
+Thus the 4 stages are:
+Read input byte from memory or as a stream.
+Slide into window.
+Calculate window digest
+Check for boundary condition.
+\newline
+\textbf{Continuum:} 2 stage to N stages. 2 stages do not allow for full pipeline utilization. Infinite stages cannot be supported because there is a high granularity which cause data dependency and stalls. Can probably be mitigated with local stores, but need to explore.
+\newline
+\textbf{Equation for benefit:} Throughput increases based on depth of pipeline, in this case 4x increase in calculating chunk boundary.
 \item%4
-
+\textbf{Axis:} Using pipelining stages on macro level
+\newline
+\textbf{Challenge:} Implementing a dataflow within HW functions to prevent memory accesses and efficient flow of data so that all the HW functions in effect are computing every cycle and thus pipelined.
+\newline
+\textbf{Opportunity:} Identifying size of local stores to be used as a RAM interface or using streaming the bytes to next level but figuring out a mechanism to indicate chunk boundary. 
+\newline
+\textbf{Continuum:} Using a large RAM interface creates a memory bottleneck, if partitioning the interface, it uses up FPGA resources.
+Streaming removes this continuum equation as its all at a byte granularity.
+\newline
+\textbf{Equation for benefit: } Throughput improves at a macro level due to reduction in memory access time and allowing all functions to be busy with computations effectively utilising the parallel nature of the FPGA.
 \item%5
 
 \item%6
@@ -169,7 +208,7 @@ Note: there are a number of things this change would affect, which is also highl
 
 \item%2
 
-\textbf{Axis:} $$, Memory requirement for sending data from CDC to SHA and LZW
+\textbf{Axis:} $O$ Memory requirement for sending data from CDC to SHA and LZW 
 \newline
 \textbf{Challenge:} Reduce the amount of memory required to save chunk data after CDC to be input into SHA and LZW which could be 8KB in the worst case.
 \newline
@@ -177,11 +216,11 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Continuum:} memory requirement for streaming data could vary from using just 1 byte to a few bytes of FIFO.  
 \newline
-\textbf{Equation for Benefit:} Saves memory from using MAX_CHUNK($8$KB) amount of memory to just a few bytes
+\textbf{Equation for Benefit:} Saves memory from using $MAX_CHUNK(8KB)$ amount of memory to just a few bytes
 
 \item%3
 
-\textbf{Axis:} $$, Granularity of data that can be sent from one unit to the next in the application flow
+\textbf{Axis:} $P$, Granularity of data that can be sent from one unit to the next in the application flow
 \newline
 \textbf{Challenge:} Reduce the time spent on waiting for input until the previous stage is done computing its output  
 \newline
