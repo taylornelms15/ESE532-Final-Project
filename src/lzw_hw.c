@@ -4,6 +4,32 @@
 */
 
 #include "lzw_hw.h"
+#include "ap_int.h"
+
+/*
+Thoughts about space:
+8k total table rows (13b)
+256 total table cols (8b)
+So, 21b address needed, matching to a 13b value
+
+21b address needs to reduce down to the 13b "where is my value" index
+
+Match BRAM: need 3 (one per 9b of key) times 114 (1 per 72 entries) BRAM's
+
+Value BRAM: 8k entries, each 13b wide
+ */
+
+//conceptually:
+//ap_uint<8192> matchTable_Top[128];//top 7 bits of key
+//ap_uint<8192> matchTable_Med[128];//med 7 bits of key
+//ap_uint<8192> matchTable_Low[128];//low 7 bits of key
+//
+//for matchTable_Top:
+//one BRAM can hold 4 sets of "rows" (512/128)
+//brings it down to ap_uint<2048> matchTable_TopMod[512]
+//so, given key `k`, matchTable_Top[k] = matchTable_TopMod[k] | (matchTable_TopMod[k + 128] << 2048) | (matchTable_TopMod[k + 256] << 4096) |  (matchTable_TopMod[k + 384] << 6144); 
+
+ap_uint<13> valTable[MAXCHUNKLENGTH];//should split into multiple BRAM's...? (2 of them, ish)
 
 
 static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
