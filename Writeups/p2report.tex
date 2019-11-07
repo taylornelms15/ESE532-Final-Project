@@ -56,7 +56,7 @@ Check for boundary condition.
 \newline
 \textbf{Continuum:} 2 stage to N stages. 2 stages do not allow for full pipeline utilization. Infinite stages cannot be supported because there is a high granularity which cause data dependency and stalls. Can probably be mitigated with local stores, but need to explore.
 \newline
-\textbf{Equation for benefit:} Throughput increases based on depth of pipeline, in this case 4x increase in calculating chunk boundary.
+\textbf{Equation for benefit:} Throughput increases based on depth of pipeline, in this case, for N stages, Nx increase in calculating chunk boundary throughput.
 \item%4
 \textbf{Axis:} Using pipelining stages on macro level
 \newline
@@ -69,9 +69,57 @@ Streaming removes this continuum equation as its all at a byte granularity.
 \newline
 \textbf{Equation for benefit: } Throughput improves at a macro level due to reduction in memory access time and allowing all functions to be busy with computations effectively utilising the parallel nature of the FPGA.
 \item%5
-
+\textbf{Axis:} Data mover selection and data access pattern
+\newline
+\textbf{Challenge:} Selecting the correct data mover between the PS and PL sections and in the process ensuring hardware code is altered to suit the data mover and conforms to the data access pattern. 
+\newline
+\textbf{Opportunity:} Using the right data mover for the hardware function arguments is important in order to reduce resource usage and improve efficiency. Example for small scalar arguments, an AXI LITE data mover would be the right choice.
+For array and structure arguments containing arrays, the choices can be multiple, it can use AXIDMA SIMPLE or AXIDMA SG movers for normal data copy. 
+If we are using shared memory, then an AXI master interface is used. Shared memory access should use buffering of data so that data can be transferred in bursts rather than a single byte access to DDR memory.
+The data access pattern ensures that for an ap fifo(sequential) interface, data is accessed in order and only once. For random access pattern, a normal data copy can be used. 
+A sequential interface is ideal for byte accesses in order, e.g. for CDC and LZW. However the code needs to be restructured, such as using local stores like registers and line buffers to enable streaming. 
+\newline
+\textbf{Continuum:} Depending on the data length and number of accesses of the data needed by the HW function, the data mover can vary from the lightweight AXI LITE to a more complicated AXIDMA SG. These factors need to be considered and interfacing code restructured to support the appropriate data mover.
+\newline
 \item%6
-
+\textbf{Axis:} Optimizing memory accesses. 
+\newline
+\textbf{Challenge: } As touched upon above, this deals with efficient usage of local store to alleviate DRAM accesses which bottleneck FPGA. Using clever local stores and initialization to prevent DRAM penalty of million cycles.
+\newline
+\textbf{Opportunity: } A great mechanism to prevent computation as well as memory redundancies. For example, if the same computation is repeated multiple times, its efficient to store the output locally and reuse it. 
+For memory accesses, reusing memory already read from DRAM by storing it locally prevents data memory re-access and heavy data movement penalties. 
+Local store can also be an stop gap between hardware functions in a dataflow setup, once more alleviating DRAM access.
+\newline
+\textbf{Continuum: } Depending on how much data needs to be stored locally, registers with multi port accesses can be an approach, or if a large BRAM is required then, memory ports may turn into bottlenecks. These factors should be considered. 
+\newline
+\textbf{Equation for benefit: } saves about million clock cycles per redundant memory access.
+\item%7
+\textbf{Axis:} Resource Usage
+\newline
+\textbf{Challenge: }  Limiting resource usage to fit within the FPGA provided resources.
+\newline
+\textbf{Opportunity: } BRAMs provide a convenient local store for large data types, but also introduce memory bottlenecks in the form of limited read/write ports. 
+Using array partitions, data can be moved across BRAMs or even stored in registers but with its own downsides.
+\newline
+\textbf{Continuum: } Large data stores use BRAMs, but memory bottleneck.
+Smaller data stores remove bottlenecks but cause heavy resource usage and long FPGA synthesis times.
+\newline
+\textbf{Equations for benefit:} memory port bottleneck = constant * memory store size
+\newline
+ 
+\textbf{Axis: } Mapping tasks to CPU, FPGA
+\newline
+\textbf{Challenge: } The individual functions can be split among CPU cores and FPGA logic.
+\newline
+\textbf{Opportunity: } Deciding if data level parallelism can be exploited on the CPU Vector engine, perhaps for SHA 512 bit blocks. 
+Maybe having multi core usage of a functionality so that each core forms a stage in a micro pipeline and the associated syncing issues present with such an approach.
+CPUs also can benefit from cacheability and higher clock speeds for computations. 
+\newline
+\textbf{Continuum: } How many stages split across multiple cores and the complexity of synchronization between cores as the number of stages increases.
+\newline
+\textbf{Equations for benefit:} Ideally, for N stages, a linear increase in throughput and at higher clock speeds, thus improving on baseline CPU performance. For CDC, this is a possible approach and the chunks can be streamed into the FPGA logic. 
+\newline
+\newline
 
 \textbf{SHA:}
 \item%1
