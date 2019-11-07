@@ -232,6 +232,18 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} Likely complex and related to a lot of interlocking features (no equation provided)
 
+\item%f
+
+\textbf{Axis:} $HM_{L}$, Hash Method for LZW string storage
+\newline
+\textbf{Challenge:} Efficient and effective storage of code strings in LZW calculation
+\newline
+\textbf{Opportunity:} Find a collective hash function that allows for byte-wise calculation of string hash as string grows
+\newline
+\textbf{Continuum:} XOR'ing bits, modular addition, any of a variety of other hash methods
+\newline
+\textbf{Equation for Benefit:} Varies by method; in general, will need to evaluate computational complexity for hash-uniformity against penalties for hash collisions. Analysis would likely be better served in an empirical, rather than theoretical, space.
+
 
 \end{enumerate}
 \item%4
