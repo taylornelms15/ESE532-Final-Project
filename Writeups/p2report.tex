@@ -47,14 +47,9 @@ N = no.of vector lanes, then N * computation on a single lane
 \newline
 \textbf{Challenge:} Allowing CPI of 1, removing sequential constraints.
 \newline
-\textbf{Opportunity:} CDC design is great for pipelining since it works at a byte level granularity. Each byte is slid into the window and hash is recalculated for the new window. Finally the rabin digest is compared for a pattern to identify chunk boundary.
-Thus the 4 stages are:
-Read input byte from memory or as a stream.
-Slide into window.
-Calculate window digest
-Check for boundary condition.
+\textbf{Opportunity:} CDC design isn't ideal for pipelining. Although it works at a byte level granularity with sequential ordered access, where each byte is slid into the window and hash is recalculated for the new window, there is a cyclic dependency with the hash digests between stages due to the rolling hash implementation. This prevents an achievable II of 1. 
 \newline
-\textbf{Continuum:} 2 stage to N stages. 2 stages do not allow for full pipeline utilization. Infinite stages cannot be supported because there is a high granularity which cause data dependency and stalls. Can probably be mitigated with local stores, but need to explore.
+\textbf{Continuum:} Even from 2 stage to N stages, the algorithm does not allow for full pipeline utilization.
 \newline
 \textbf{Equation for benefit:} Throughput increases based on depth of pipeline, in this case, for N stages, Nx increase in calculating chunk boundary throughput.
 \item%4
@@ -117,7 +112,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Continuum: } How many stages split across multiple cores and the complexity of synchronization between cores as the number of stages increases.
 \newline
-\textbf{Equations for benefit:} Ideally, for N stages, a linear increase in throughput and at higher clock speeds, thus improving on baseline CPU performance. For CDC, this is a possible approach and the chunks can be streamed into the FPGA logic. 
+\textbf{Equations for benefit:} Ideally, for N stages, a linear increase in throughput and at higher clock speeds, thus improving on baseline CPU performance.  
 \newline
 \newline
 
