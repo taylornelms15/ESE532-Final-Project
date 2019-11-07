@@ -18,9 +18,9 @@
 \section{Design Space Axes}
 \begin{enumerate}
 \item%1
-
 \textbf{CDC:}
-\item%1
+\begin{enumerate}
+\item%a
 \textbf{Axis:} Multiple CDC HW resources
 \newline
 \textbf{Challenge:} Improving throughput of chunks created from input file. Ideally linear increase in throughput. 
@@ -30,7 +30,7 @@
 \textbf{Continuum:} From 1 to how many can fit into fabric. At higher resource numbers, the chunkable data stream would reduce thus creating more overhead in LZW compression. This probably creates diminishing returns.
 \newline
 \textbf{Equation for Benefit:} Total throughput = (No.of resources * Throughput of individual CDC)
-\item%2
+\item%b
 \textbf{Axis:} Using vector engines for computation
 \newline
 \textbf{Challenge: } Improving throughput by leveraging independent data level parallelism
@@ -42,7 +42,7 @@
 \textbf{Equation for benefit:} A linear improvement as earlier:
 \newline
 N = no.of vector lanes, then N * computation on a single lane
-\item%3
+\item%c
 \textbf{Axis:} Using pipelining stages on microlevel
 \newline
 \textbf{Challenge:} Allowing CPI of 1, removing sequential constraints.
@@ -52,7 +52,7 @@ N = no.of vector lanes, then N * computation on a single lane
 \textbf{Continuum:} Even from 2 stage to N stages, the algorithm does not allow for full pipeline utilization.
 \newline
 \textbf{Equation for benefit:} Throughput increases based on depth of pipeline, in this case, for N stages, Nx increase in calculating chunk boundary throughput.
-\item%4
+\item%d
 \textbf{Axis:} Using pipelining stages on macro level
 \newline
 \textbf{Challenge:} Implementing a dataflow within HW functions to prevent memory accesses and efficient flow of data so that all the HW functions in effect are computing every cycle and thus pipelined.
@@ -63,7 +63,7 @@ N = no.of vector lanes, then N * computation on a single lane
 Streaming removes this continuum equation as its all at a byte granularity.
 \newline
 \textbf{Equation for benefit: } Throughput improves at a macro level due to reduction in memory access time and allowing all functions to be busy with computations effectively utilising the parallel nature of the FPGA.
-\item%5
+\item%e
 \textbf{Axis:} Data mover selection and data access pattern
 \newline
 \textbf{Challenge:} Selecting the correct data mover between the PS and PL sections and in the process ensuring hardware code is altered to suit the data mover and conforms to the data access pattern. 
@@ -76,7 +76,7 @@ A sequential interface is ideal for byte accesses in order, e.g. for CDC and LZW
 \newline
 \textbf{Continuum:} Depending on the data length and number of accesses of the data needed by the HW function, the data mover can vary from the lightweight AXI LITE to a more complicated AXIDMA SG. These factors need to be considered and interfacing code restructured to support the appropriate data mover.
 \newline
-\item%6
+\item%f
 \textbf{Axis:} Optimizing memory accesses. 
 \newline
 \textbf{Challenge: } As touched upon above, this deals with efficient usage of local store to alleviate DRAM accesses which bottleneck FPGA. Using clever local stores and initialization to prevent DRAM penalty of million cycles.
@@ -88,7 +88,7 @@ Local store can also be an stop gap between hardware functions in a dataflow set
 \textbf{Continuum: } Depending on how much data needs to be stored locally, registers with multi port accesses can be an approach, or if a large BRAM is required then, memory ports may turn into bottlenecks. These factors should be considered. 
 \newline
 \textbf{Equation for benefit: } saves about million clock cycles per redundant memory access.
-\item%7
+\item%g
 \textbf{Axis:} Resource Usage
 \newline
 \textbf{Challenge: }  Limiting resource usage to fit within the FPGA provided resources.
@@ -101,7 +101,7 @@ Smaller data stores remove bottlenecks but cause heavy resource usage and long F
 \newline
 \textbf{Equations for benefit:} memory port bottleneck = constant * memory store size
 \newline
- 
+ \item%h
 \textbf{Axis: } Mapping tasks to CPU, FPGA
 \newline
 \textbf{Challenge: } The individual functions can be split among CPU cores and FPGA logic.
@@ -115,10 +115,12 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \textbf{Equations for benefit:} Ideally, for N stages, a linear increase in throughput and at higher clock speeds, thus improving on baseline CPU performance.  
 \newline
 \newline
+\end{enumerate}
 
+\item%2
 \textbf{SHA:}
-\item%1
-
+\begin{enumerate}
+\item%a
 \textbf{Axis:} $S$, Number of SHA-256 hardware units
 \newline
 \textbf{Challenge:} Improving throughput of hashing step
@@ -129,7 +131,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=S*\texttt{singleSHAUnitThroughput}$
 
-\item%2
+\item%b
 
 \textbf{Axis:} $K$, No. of SHA sub-chunk computation unit for computing on 64 byte sub-chunks
 \newline
@@ -141,7 +143,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=K*\texttt{singleSHASubUnitThroughput}$
 
-\item%3
+\item%c
 
 \textbf{Axis:} $P$, Type of memory(units of partitioned memory) to store the input chunk data of SHA
 \newline
@@ -153,7 +155,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=P*\texttt{singleChunkMemReadTime}$
 
-\item%4
+\item%d
 
 \textbf{Axis:} $M$, Type of memory to store the hash values  
 \newline
@@ -165,14 +167,11 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=M*\texttt{singleMemRead/Write}$
 
-\item%5
-
-
-\item%6
-
-
+\end{enumerate}
+\item%3
 \textbf{LZW:}
-\item%1
+\begin{enumerate}
+\item%a
 
 \textbf{Axis:} $L$, Number of LZW hardware units
 \newline
@@ -184,7 +183,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(L\right)=S*\texttt{singleLZWUnitThroughput}$
 
-\item%2
+\item%b
 
 \textbf{Axis:} $Z$, Design choice for LZW hash table unit
 \newline
@@ -196,7 +195,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} Slide 65 from Day 17 has the relevant tradeoff chart, with implied \texttt{implementation\_complexity} parameter to consider.
 
-\item%3
+\item%c
 
 \textbf{Axis:} $II_L$, Pipelining II for LZW hardware implementation
 \newline
@@ -208,7 +207,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(\texttt{LZW}\right)=\frac{1 byte}{II_L}$
 
-\item%4
+\item%d
 
 \textbf{Axis:} $W_L$, LZW compression window size
 \newline
@@ -221,7 +220,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \textbf{Equation for Benefit:} $\texttt{memRequirements}_{LZW} *= \frac{W_L}{\texttt{MAX\_CHUNK\_SIZE}}$\newline
 Note: there are a number of things this change would affect, which is also highly dependent on $Z$ (defined above). We will likely not change this, but it is a parameter that could be tuned.
 
-\item%5
+\item%e
 
 \textbf{Axis:} $D_L$, Pipeline depth into LZW implementation
 \newline
@@ -233,11 +232,13 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} Likely complex and related to a lot of interlocking features (no equation provided)
 
-\item%6
 
-
+\end{enumerate}
+\item%4
 \textbf{Interfacing:}
-\item%1
+
+\begin{enumerate}
+\item%a
 
 \textbf{Axis:} $N$, Number of bytes at a time transfered to CDC unit
 \newline
@@ -249,7 +250,7 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} $\texttt{memTransferTime}_{total} = \frac{\texttt{totalInput}}{N}*\left(\texttt{memTransferOverhead} + N*\texttt{memTransferRate}    \right)$
 
-\item%2
+\item%b
 
 \textbf{Axis:} $O$ Memory requirement for sending data from CDC to SHA and LZW 
 \newline
@@ -261,7 +262,7 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} Saves memory from using $MAX_CHUNK(8KB)$ amount of memory to just a few bytes
 
-\item%3
+\item%c
 
 \textbf{Axis:} $P$, Granularity of data that can be sent from one unit to the next in the application flow
 \newline
@@ -273,7 +274,7 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} saves on time spent in waiting for the input data to be available as now it can start operating as soon as $1$ byte of input data is available
 
-\item%4
+\item%d
 
 \textbf{Axis:} $H$, Number of bits in hash of SHA value for storing SHA values
 \newline
@@ -290,6 +291,8 @@ Note: there are a number of things this change would affect, which is also highl
 \[
 \texttt{probCollision}={N \choose m}\left(\frac{1}{C}\right)^m \left(1 - \frac{1}{C}\right)^{N-m}
 \]
+
+\end{enumerate}
 
 \end{enumerate}
 
