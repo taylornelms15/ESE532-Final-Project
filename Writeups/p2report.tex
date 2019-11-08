@@ -268,6 +268,18 @@ Note: there are a number of things this change would affect, which is also highl
 \newline
 \textbf{Equation for Benefit:} Varies by method; in general, will need to evaluate computational complexity for hash-uniformity against penalties for hash collisions. Analysis would likely be better served in an empirical, rather than theoretical, space.
 
+\item%g
+
+\textbf{Axis:} ${MCS}_{L}$, Max Chunk Size for LZW
+\newline
+\textbf{Challenge:} Efficient and effective storage of code strings in LZW calculation
+\newline
+\textbf{Opportunity:} Reducing maximum chunk size across program to allow for fully-in-BRAM LZW table memory
+\newline
+\textbf{Continuum:} Anywhere from $256$ bytes (not recommended, likely) to the class-recommended $8kB$
+\newline
+\textbf{Equation for Benefit:} Memory requirements likely grow along the scale of $O\left({MCS}_{L}\log({MCS}_{L})\right)$, given that we are storing up to ${MCS}_{L}$ values of size $\log({MCS}_{L})$
+
 
 \end{enumerate}
 \item%4
