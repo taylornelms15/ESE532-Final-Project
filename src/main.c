@@ -46,7 +46,7 @@ unsigned int Load_data(unsigned char * Data)
 #ifdef __SDSCC__
   FIL File;
 
-  FRESULT Result = f_open(&File, "Input.bin", FA_READ);
+  FRESULT Result = f_open(&File, "ucomp.txt", FA_READ);
   Check_error(Result != FR_OK, "Could not open input file.");
 
   Result = f_read(&File, Data, Size, &Bytes_read);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 #ifdef __SDSCC__
     FIL File;
 
-    FRESULT Result = f_open(&File, "Output.bin", FA_WRITE | FA_CREATE_ALWAYS);
+    FRESULT Result = f_open(&File, "compress.dat", FA_WRITE | FA_CREATE_ALWAYS);
     Check_error(Result != FR_OK, "Could not open output file.");
 
 #else

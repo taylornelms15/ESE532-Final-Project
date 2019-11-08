@@ -1,3 +1,5 @@
+/* Reference : https://github.com/fd0/rabin-cdc */
+
 //#include <err.h>
 #include <stdlib.h>
 #include <stdbool.h>
