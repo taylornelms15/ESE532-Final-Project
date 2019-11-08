@@ -3,6 +3,8 @@
 #include<stdio.h>
 #include "sha_256.h"
 
+/** Reference : https://github.com/B-Con/crypto-algorithms */
+
 /****************************** MACROS ******************************/
 #define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
 #define ROTRIGHT(a,b) (((a) >> (b)) | ((a) << (32-(b))))
@@ -86,12 +88,6 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 {
 	WORD_SHA i;
 
-    /*printf("Inside sha*****\n");
-    for(int i = 0; i < len; i++) {
-        printf("%c",data[i]);
-    }
-    printf("\n");
-    */
 	for (i = 0; i < len; ++i) {
 		ctx->data[ctx->datalen] = data[i];
 		ctx->datalen++;
