@@ -57,22 +57,22 @@ N = no.of vector lanes, then N * computation on a single lane
 \newline
 \textbf{Challenge:} Implementing a dataflow within HW functions to prevent memory accesses and efficient flow of data so that all the HW functions in effect are computing every cycle and thus pipelined.
 \newline
-\textbf{Opportunity:} Identifying size of local stores to be used as a RAM interface or using streaming the bytes to next level but figuring out a mechanism to indicate chunk boundary. 
+\textbf{Opportunity:} Identifying size of local stores to be used as a RAM interface or using streaming the bytes to next level but figuring out a mechanism to indicate chunk boundary. For CDC, the chunk boundary in the worst case is MAXCHUNKSIZE bytes. A local store of this size would be needed to hold this chunk before pushing it through to the next HW function. 
+Alternatively, a smaller buffer of 8bytes could be used with an additional header appended to indicate presence of another 8 bytes. If the chunk boundary has been hit, then a packet with a header signalling last packet can be sent through. This allows quicker data transfer, with a smaller local store, but with the overhead of a header byte. 
 \newline
 \textbf{Continuum:} Using a large RAM interface creates a memory bottleneck, if partitioning the interface, it uses up FPGA resources.
 Streaming removes this continuum equation as its all at a byte granularity.
 \newline
 \textbf{Equation for benefit: } Throughput improves at a macro level due to reduction in memory access time and allowing all functions to be busy with computations effectively utilising the parallel nature of the FPGA.
 \item%e
-\textbf{Axis:} Data mover selection and data access pattern
+\textbf{Axis:} Data mover selection and data access pattern for CDC.
 \newline
 \textbf{Challenge:} Selecting the correct data mover between the PS and PL sections and in the process ensuring hardware code is altered to suit the data mover and conforms to the data access pattern. 
 \newline
-\textbf{Opportunity:} Using the right data mover for the hardware function arguments is important in order to reduce resource usage and improve efficiency. Example for small scalar arguments, an AXI LITE data mover would be the right choice.
+\textbf{Opportunity:} Using the right data mover for the hardware function arguments is important in order to reduce resource usage and improve efficiency. Example for small scalar arguments, an AXI LITE data mover would be the right choice. For CDC, the data entering the rabin logic is either a file content, or network packets. Since these data bytes are stored in DRAM, it can be copied over or more ideally it can be streamed a byte at a time. A sequential interface is ideal for byte accesses in order, e.g. for CDC and LZW. However the code needs to be restructured, such as using local stores like registers and line buffers to enable streaming. 
 For array and structure arguments containing arrays, the choices can be multiple, it can use AXIDMA SIMPLE or AXIDMA SG movers for normal data copy. 
 If we are using shared memory, then an AXI master interface is used. Shared memory access should use buffering of data so that data can be transferred in bursts rather than a single byte access to DDR memory.
 The data access pattern ensures that for an ap fifo(sequential) interface, data is accessed in order and only once. For random access pattern, a normal data copy can be used. 
-A sequential interface is ideal for byte accesses in order, e.g. for CDC and LZW. However the code needs to be restructured, such as using local stores like registers and line buffers to enable streaming. 
 \newline
 \textbf{Continuum:} Depending on the data length and number of accesses of the data needed by the HW function, the data mover can vary from the lightweight AXI LITE to a more complicated AXIDMA SG. These factors need to be considered and interfacing code restructured to support the appropriate data mover.
 \newline
@@ -82,6 +82,7 @@ A sequential interface is ideal for byte accesses in order, e.g. for CDC and LZW
 \textbf{Challenge: } As touched upon above, this deals with efficient usage of local store to alleviate DRAM accesses which bottleneck FPGA. Using clever local stores and initialization to prevent DRAM penalty of million cycles.
 \newline
 \textbf{Opportunity: } A great mechanism to prevent computation as well as memory redundancies. For example, if the same computation is repeated multiple times, its efficient to store the output locally and reuse it. 
+Specifically, a buffer of window size bytes can be used for the rabin fingerprint calculation. There are multiple references to the fingerprint value within the rabin logic, which can also be stored locally and accessed.  
 For memory accesses, reusing memory already read from DRAM by storing it locally prevents data memory re-access and heavy data movement penalties. 
 Local store can also be an stop gap between hardware functions in a dataflow setup, once more alleviating DRAM access.
 \newline
@@ -102,18 +103,31 @@ Smaller data stores remove bottlenecks but cause heavy resource usage and long F
 \textbf{Equations for benefit:} memory port bottleneck = constant * memory store size
 \newline
  \item%h
-\textbf{Axis: } Mapping tasks to CPU, FPGA
+\textbf{Axis: } Mapping tasks to CPU, FPGA.
 \newline
 \textbf{Challenge: } The individual functions can be split among CPU cores and FPGA logic.
 \newline
 \textbf{Opportunity: } Deciding if data level parallelism can be exploited on the CPU Vector engine, perhaps for SHA 512 bit blocks. 
 Maybe having multi core usage of a functionality so that each core forms a stage in a micro pipeline and the associated syncing issues present with such an approach.
 CPUs also can benefit from cacheability and higher clock speeds for computations. 
+Can also do rabin and SHA initializations on separate cores initially, although according to Amdahl's law as the incoming data size increases, the initialization stage becomes negligible.
 \newline
 \textbf{Continuum: } How many stages split across multiple cores and the complexity of synchronization between cores as the number of stages increases.
 \newline
 \textbf{Equations for benefit:} Ideally, for N stages, a linear increase in throughput and at higher clock speeds, thus improving on baseline CPU performance.  
 \newline
+\item%i
+\textbf{Axis:} Varying size of max chunk length and window size
+\newline
+\textbf{Challenge:} Identify the tradeoffs between chunk sizes and other performance.
+\newline
+\textbf{Opportunity: } There is a correlation between max chunk size and the number of lower order bits that need to be checked against a rabin mask. So the smaller the max chunk size, the less number of bits need to be compared. 
+Altering window size is more flexible because of the rolling hash implementation. It always removes a byte, and calculates the rabin fingerprint on previously calculated fingerprint and new byte. This operation will be constant time irrespective of rolling window size. Also enables easier implementations for lzw table.
+\newline
+\textbf{Continuum: } Reducing max chunk size allows more boundaries to be identified, but also reduces the size of chunk that gets duplicated, also involving more comparisons with the SHA table. 
+Increasing chunk size, causes other boundaries to be encapsulated within the identified chunk. But it allows less comparisons with SHA table. 
+\textbf{Equations for benefit:} Chunk size = constant * (1 / Comparisons with SHA table) 
+Chunk size = constant * boundaries found
 \newline
 \end{enumerate}
 
@@ -350,7 +364,7 @@ Zip file of fully functional code submitted.
 \section{Binaries}
 Zip file of binaries submitted.
 
-\section{Documentatiion}
+\section{Documentation}
 
 
 
@@ -361,19 +375,22 @@ All the source codes have been documented and the references have been documente
 
 
 \item%b
-\textbf{Compression ratio:}
+\textbf{Compression ratio:} For a file of 50KB, the compressed output was 24KB, which is a compression ratio of 0.449. 
 \newline
-\textbf{Breakdown:}
-
-
+\textbf{Breakdown:} LZW compressed 34.5KB of data into ~24KB of data, which is a compression of 10.5KB. 
+Chunking compressed 15.5KB of data into 36B. Which is a data compression of ~15.5KB
+Therefore LZW contribution is 10.5/26 = 0.403 and 0.597 from chunking deduplication. 
 
 \item%c
 
-\textbf{Overall thriughput:}
+\textbf{Overall throughput:} To process an average chunk size of 1765 bytes, our application takes 24.8M cycles. 
+This generates a throughput of 47Kbps.
 
 \item%d
 
-\textbf{Validation:}
+\textbf{Validation:} Validated with the Decoder output as the gold standard. If the diff between the Decoder output of the compress.dat and ucomp.txt are the same, it shows that the algorithm is working. 
+SHA was validated by running the same chunks across SHA multiple times and checking if the output produced is the same everytime. 
+Chunk was tested by adding a byte in the initial chunk, which should cause all other chunks to be the same except for the first.
 
 \item%e
 
