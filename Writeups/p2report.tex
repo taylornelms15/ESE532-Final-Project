@@ -157,7 +157,7 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 
 \item%d
 
-\textbf{Axis:} $M$, Type of memory to store the hash values  
+\textbf{Axis:} $H$, Type of memory to store the hash values
 \newline
 \textbf{Challenge:} Improving throughput of hashing step
 \newline
@@ -166,6 +166,30 @@ CPUs also can benefit from cacheability and higher clock speeds for computations
 \textbf{Continuum:} Anywhere from $1$ to $8$.  
 \newline
 \textbf{Equation for Benefit:} \texttt{Throughput}$\left(S\right)=M*\texttt{singleMemRead/Write}$
+
+\item%e
+
+\textbf{Axis:} $A$, Pipeline depth for hashing   
+\newline
+\textbf{Challenge:} Improving throughput of hashing step
+\newline
+\textbf{Opportunity:} Pipeline hashing function so that computation for next chunk can start when current is still being computed
+\newline
+\textbf{Continuum:} Anything from 2 to a value before or at which pipelining benefits can be observed. After that value, it will start to increase the latency due to pipleine overheads as it results in diminishing returns.
+\newline
+\textbf{Equation for Benefit:}  It increases the throughput. If earlier it was taking n cycles for an output, then with careful setting of pipeline depth and pipeline stages, it has the ability to result in 1 output per cycle.
+
+\item%f
+
+\textbf{Axis:} $DM$, Data movement between sub-chunk computation units of SHA - save on memory
+\newline
+\textbf{Challenge:} Improving latency of SHA computation for a chunk and saving memory to store intermediate hash values
+\newline
+\textbf{Opportunity:} Stream intermediate hash values from 1 unit to another in order to do perform addition to generate the final hash values 
+\newline
+\textbf{Continuum:} The continuum here is basically about how much memory to be used as FIFO which can vary from 1 32-bit location to 8 of them. The latter is simply the case where all the 8 hash values are being stored on memory, nothing really being streamed. 
+\newline
+\textbf{Equation for Benefit:}  For n 64 byte subchunks, memory utilization would be 32*n bytes. With streaming, it could go as low as 1 byte to no memory at all. 
 
 \end{enumerate}
 \item%3
