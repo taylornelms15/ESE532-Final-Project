@@ -31,6 +31,12 @@ def hashKey(key):
     """
     Hashes the 20(?)-bit key into a 10(?)-bit value
     Thought: most variance around lowest 8 bits (the "char" value), and next 8 bits (the "curTableRow" for the lower end), esp the lower of those (9 and 10)
+    Evaluations: on evaluating from a couple of test files, I could get a difference between an ideal
+        hash distribution (same number of values in each bucket)
+        and the resultant hash distribution around a factor of 3
+    As such, if I expect 8k entries across 1k hashes,
+    it means that I can, to some degree, plan for 24 values per hash
+    (with an associative memory for safety overflow I guess)
     """
     vlo4    = (key)         & 0xF
     lo4     = (key >> 4)    & 0xF
