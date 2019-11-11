@@ -51,10 +51,24 @@ static const uint8_t rindBox[256] = {
 
 
 
-ap_uint<13> valTable[MAXCHUNKLENGTH];//should split into multiple BRAM's...? (2 of them, ish)
+//ap_uint<13> valTable[MAXCHUNKLENGTH];//should split into multiple BRAM's...? (2 of them, ish)
 
+//static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
 
-static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
+/*
+Hash approach:
+34-bit value pairs (key(21) plus val(13))
+2 in each line of BRAM
+2 BRAM's for 2-deep hash table (1024 entries total, 68 bits of value)
+Target: hold 8k entries, so 4 2-deep tables
+But, hash function not great, budget for 24k entries
+So, 12 2-deep tables, meaning 24 BRAMs for it
+*/
+ap_uint<68> hashTable [12][1024];//2 wide, 1024 tall, 12 deep
+//val1and2 = hashTable[0][hashVal]; val3and4 = hashTable[1][hashVal]; etc.
+//will want to use table of "valid" bits for quick table-resetting
+//with 4k max chunk length, can use uint64_t, cut down to half the number of tables, meaning one valid-byte could cover a whole set of things
+
 
 /**
  * Hash function to reduce a 20- or 21-bit key down to a 10-bit hash row index
@@ -82,8 +96,25 @@ ap_uint<10> hashKey(uint32_t key){
     retval          &= 0x3FF;
     return (ap_uint<10>) retval;
 
-}
+}//hashKey
 
+void writeToTable(const ap_uint<13> row, const uint8_t col, const ap_uint<13> val){
+
+}//writeToTable
+
+/**
+ * Reads a value from the LZW table
+ * If not found, returns 0x1FFF
+ */
+ap_uint<13> readFromTable(const ap_uint<13> row, const uint8_t col){
+    uint32_t key = ((uint32_t)(row) << 8) | col;
+    ap_uint<10> hashedKey = hashKey(key);
+
+    //TODO: add in the actual reading of values
+
+
+    return (ap_uint<13>) 0;
+}//readFromTable
 
 
 
@@ -101,7 +132,8 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output){
     int curTableRow = input[iidx++];
     while (iidx < numElements) {
         uint8_t curChar = input[iidx++];
-        uint16_t currentTableValue = table[curTableRow][curChar];
+        uint16_t currentTableValue = readFromTable(curTableRow, curChar);
+        //uint16_t currentTableValue = table[curTableRow][curChar];
         if (currentTableValue != NONEFOUND){
             curTableRow = currentTableValue;
             if (iidx == numElements){//fixes a "missing last code" problem
@@ -112,7 +144,9 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output){
         }
         else {
             outBuffer[oidx++] = curTableRow;
-            table[curTableRow][curChar] = oidx + MAXCHARVAL - 1;
+            ap_uint<13> valToWrite = oidx + MAXCHARVAL - 1;
+            writeToTable(curTableRow, curChar, valToWrite);
+            //table[curTableRow][curChar] = valToWrite;
             curTableRow = curChar;//reset back to initial block
             if (iidx == numElements){//fixes a "missing last code" problem
                 outBuffer[oidx++] = curTableRow;

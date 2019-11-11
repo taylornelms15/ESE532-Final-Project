@@ -78,10 +78,12 @@ def evalHashDistribution(records):
     maxVal = max(buckets)
     minVal = min(buckets)
     idealMax = total / 1024
+    bucketsWithMoreThan2 = len([x for x in buckets if (x * 1.0 / idealMax) > 2.0])
     print("Total num records: %s" % total)
     print("\tMaximum bucket val: %s" % maxVal)
     print("\tMinimum bucket val: %s" % minVal)
     print("\tIdeal avg bucket val: %s" % idealMax)
+    print("bucketsWithMoreThan2: %s" % bucketsWithMoreThan2)
     print("Hash distribution ratio: %s" % (maxVal / idealMax))
     graphBuckets(buckets)
 
