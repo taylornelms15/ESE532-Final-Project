@@ -3,10 +3,13 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+extern "C"{
 #include "rabin.h"
 #include "sha_256.h"
 #include "lzw_sw.h"
 #include "chunkdict.h"
+}
+#include "lzw_hw.h"
 #ifdef __SDSCC__
 #include <ff.h>
 #include <sds_lib.h>
@@ -72,6 +75,25 @@ unsigned int Load_data(unsigned char * Data)
   return Bytes_read;
 }
 
+int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElements){
+	int numMistakes = 0;
+	int maxMistakes = 8;
+	for(int i = 0; i < numElements; i++){
+		if (cand[i] != gold[i]){
+			printf("B\tCandidate value of 0x%02x differed from golden value of 0x%02x at position [%d]\n", cand[i], gold[i], i);
+			numMistakes++;
+			if (numMistakes >= maxMistakes){
+			    return 1;
+			}
+		}
+		else{
+			printf("G\tCandidate value of 0x%02x matched golden value of 0x%02x at position [%d]\n", cand[i], gold[i], i);
+		}
+	}//for
+	printf("Two arrays equal!!!!!!!!!!\n");
+	return 0;
+}
+
 int main(int argc, char *argv[]) {
 
 	struct rabin_t *hash;
@@ -81,6 +103,7 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
     uint8_t compress[MAXSIZE];
+    uint8_t compress2[MAXSIZE];
     printf("Starting main function\n");
 
     buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
@@ -126,7 +149,16 @@ int main(int argc, char *argv[]) {
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
+                printf("Input:\t[0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x...\n",
+                		buf[last_chunk.start + 0], buf[last_chunk.start + 1], buf[last_chunk.start + 2],
+						buf[last_chunk.start + 3], buf[last_chunk.start + 4], buf[last_chunk.start + 5]);
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
+                int compress_size2 = lzwCompressWrapper(&buf[last_chunk.start], last_chunk.length, &compress2[4]);
+
+                printf("compress_size [%d], compress_size2 [%d]\n", compress_size, compress_size2);
+                uint32_t header = (compress_size2 + 4) << 1;
+                memcpy((uint32_t*)&compress2[0], &header, 1 * sizeof(uint32_t));
+                compareArrays(compress2, compress, compress_size);
 #ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);
 #else

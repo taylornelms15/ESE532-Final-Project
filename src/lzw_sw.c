@@ -4,6 +4,8 @@
 #include "lzw_sw.h"
 #include <string.h>
 
+#define NONEFOUND 0xFFFF
+
 /// Record of whether we are writing what our hashed chunk values are (for exploration of hash functions offline)
 //#define WRITING_HASHVALUES
 
