@@ -18,8 +18,8 @@
 // 1MiB buffer
 uint8_t* buf;
 size_t bytes;
-static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
-static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char infileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.txt";
+static const char outfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.dat";
 
 void Check_error(int Error, const char * Message)
 {
@@ -75,7 +75,7 @@ unsigned int Load_data(unsigned char * Data)
 int main(int argc, char *argv[]) {
 
 	struct rabin_t *hash;
-    hash = rabin_init();
+	hash = rabin_init();
     SHA256_CTX ctx;
     sha256_init(&ctx);
     unsigned int chunks = 0;
@@ -108,10 +108,16 @@ int main(int argc, char *argv[]) {
 #endif
 
     uint8_t *ptr = buf;
+    uint8_t chunk[MAXSIZE];
     bytes += len;
+    int remaining;
 
-        while (1) {
-            int remaining = rabin_next_chunk(hash, ptr, len);
+        while (len > MAXSIZE) {
+
+        	if(len > MAXSIZE)
+        		remaining = rabin_next_chunk(hash, ptr, chunk, MAXSIZE);
+        	//else
+        		//remaining = rabin_next_chunk(hash, ptr, chunk, len);
 
             if (remaining < 0) {
                 break;
@@ -121,12 +127,12 @@ int main(int argc, char *argv[]) {
             ptr += remaining;
 
             sha256_init(&ctx);
-            sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
+            sha256_update(&ctx, chunk, remaining);
             sha256_final(&ctx, sha_buf);
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-                int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
+                int compress_size = lzwCompress(&chunk[0], remaining, compress);
 #ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);
 #else
@@ -152,13 +158,13 @@ int main(int argc, char *argv[]) {
         chunks++;
 
         sha256_init(&ctx);
-        sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length);
+        sha256_update(&ctx, &chunk[0], last_chunk.length);
         sha256_final(&ctx, sha_buf);
 
 
         int shaIndex = indexForShaVal(sha_buf);
         if(shaIndex == -1){
-            int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
+            int compress_size = lzwCompress(&chunk[0], last_chunk.length, compress);
 #ifdef __SDSCC__
             f_write(&File, compress, compress_size, &bytes_read);
 #else

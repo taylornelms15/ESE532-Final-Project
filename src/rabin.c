@@ -84,20 +84,27 @@ static void calc_tables(void) {
     }
 }
 
-void rabin_append(struct rabin_t *h, uint8_t b) {
-    uint8_t index = (uint8_t)(h->digest >> POL_SHIFT);
-    h->digest <<= 8;
-    h->digest |= (uint64_t)b;
-    h->digest ^= mod_table[index];
+uint64_t rabin_append(uint64_t digest, uint8_t c) {
+	uint8_t d = c;
+    uint8_t index = (uint8_t)(digest >> POL_SHIFT);
+    digest <<= 8;
+    digest |= (uint64_t)d;
+    digest ^= mod_table[index];
+    return digest;
 }
 
-void rabin_slide(struct rabin_t *h, uint8_t b) {
-    uint8_t out = h->window[h->wpos];
-    h->window[h->wpos] = b;
-    h->digest = (h->digest ^ out_table[out]);
-    h->wpos = (h->wpos +1 ) % WINSIZE;
-    rabin_append(h, b);
+
+uint8_t rabin_slide(struct rabin_t *h, uint8_t b, uint8_t wpos) {
+    uint64_t digest = h->digest;
+    uint8_t c = b;
+	uint8_t out = h->window[wpos];
+    h->window[wpos] = c;
+    digest = (digest ^ out_table[out]);
+    wpos = (wpos +1 ) % WINSIZE;
+    h->digest = rabin_append(digest, c);
+    return wpos;
 }
+
 
 void rabin_reset(struct rabin_t *h) {
     for (int i = 0; i < WINSIZE; i++)
@@ -109,34 +116,70 @@ void rabin_reset(struct rabin_t *h) {
     h->start = 0;
     h->pos = 0;
 
-    rabin_slide(h, 1);
+    rabin_slide(h, 1, 0);
 }
 
-int rabin_next_chunk(struct rabin_t *h, uint8_t *buf, unsigned int len) {
-    for (unsigned int i = 0; i < len; i++) {
-        uint8_t b = *buf++;
 
-        rabin_slide(h, b);
 
-        h->count++;
-        h->pos++;
+#pragma SDS data access_pattern(buf:SEQUENTIAL, chunk:SEQUENTIAL)
+#pragma SDS data copy(buf[0:MAXSIZE], chunk[0:MAXSIZE])
+int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned int len) {
+	unsigned int count = h->count;
+    unsigned int pos = h->pos;
+    uint64_t digest = h->digest;
+    uint8_t wpos = 0;
+    uint8_t is_stop = 0;
 
-        if ((h->count >= MINSIZE && ((h->digest & MASK) == 0)) || h->count >= MAXSIZE) {
+
+
+	chunk_loop:for (unsigned int i = 0; i < len; i++) {
+		#pragma HLS loop_tripcount min=1024 max=8192
+		#pragma HLS pipeline II=1
+        uint8_t b = buf[i];
+
+        if (is_stop == 0) {
+        uint8_t out = h->window[wpos];
+        h->window[wpos] = b;
+        wpos = (wpos +1 ) % WINSIZE;
+
+        digest = (digest ^ out_table[out]);
+        uint8_t index = (uint8_t)(digest >> POL_SHIFT);
+
+        digest = (digest << 8 | (uint64_t)b) ^ mod_table[index];
+
+        count++;
+        pos++;
+        chunk[i] = b;
+        }
+
+        if ((is_stop == 0) && ((count >= MINSIZE) && (digest & MASK) == 0) || count >= MAXSIZE) {
             last_chunk.start = h->start;
-            last_chunk.length = h->count;
-            last_chunk.cut_fingerprint =  h->digest;
-            last_chunk.byte[h->count] = '\0';
+            last_chunk.length = count;
+            last_chunk.cut_fingerprint =  digest;
+            last_chunk.byte[count] = '\0';
             // keep position
-            unsigned int pos = h->pos;
-            rabin_reset(h);
+            //unsigned int pos = h.pos;
+#pragma HLS ARRAY_PARTITION variable=h->window dim=0 complete
+            for (int i = 0; i < WINSIZE; i++)
+                    h->window[i] = 0;
+                h->digest = 0;
+                h->wpos = 0;
+                h->count = 0;
+                h->digest = 0;
+                h->start = 0;
+                h->pos = 0;
             h->start = pos;
             h->pos = pos;
-
-            return i+1;
+            is_stop = 1;
+            //return last_chunk.length;
         }
-    }
 
-    return -1;
+    }
+	h->count = count;
+	h->pos = pos;
+
+	return last_chunk.length;
+
 }
 
 struct rabin_t *rabin_init(void) {

@@ -22,7 +22,7 @@ typedef struct rabin_t rabin_t;
 
 struct chunk_t {
     unsigned int start;
-    unsigned int length;
+    signed int length;
     uint64_t cut_fingerprint;
     uint8_t byte[MAXSIZE];
 };
@@ -31,9 +31,9 @@ extern struct chunk_t last_chunk;
 
 struct rabin_t *rabin_init(void);
 void rabin_reset(struct rabin_t *h);
-void rabin_slide(struct rabin_t *h, uint8_t b);
-void rabin_append(struct rabin_t *h, uint8_t b);
-int rabin_next_chunk(struct rabin_t *h, uint8_t *buf, unsigned int len);
+uint8_t rabin_slide(struct rabin_t *h, uint8_t b, uint8_t wpos);
+uint64_t rabin_append(uint64_t digest, uint8_t c);
+int rabin_next_chunk(struct rabin_t *h,uint8_t buf[MAXINPUTFILESIZE], uint8_t chunk[MAXSIZE], unsigned int len);
 struct chunk_t *rabin_finalize(struct rabin_t *h);
 
 #endif
