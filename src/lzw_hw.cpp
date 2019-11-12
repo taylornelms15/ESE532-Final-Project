@@ -70,6 +70,9 @@ So, 12 2-deep tables, meaning 24 BRAMs for it
 static ap_uint<34> hashTable [HASH_DEPTH][1024];//1 wide, 1024 tall, 24 deep)
 static ap_uint<HASH_DEPTH> validityTable[1024];//bitmask for each of the hash table entries
 
+static uint8_t boundary = 0;
+static uint8_t currentOverflow = 0;
+
 
 
 /**
@@ -162,30 +165,29 @@ ap_uint<13> readFromTable(ap_uint<21> key, ap_uint<HASH_DEPTH> validityEntry, ap
     return retval;
 }//readFromTable
 
-uint8_t writeToOutput(const ap_uint<13> val, uint8_t& boundary,
-				uint8_t* currentOverflow, hls::stream< ap_uint<9> > &output ){
+uint8_t writeToOutput(const ap_uint<13> val, hls::stream< ap_uint<9> > &output ){
 	#pragma HLS inline
 	uint8_t numOutput = 0;
     ap_uint<9> valsToOutput1;
     ap_uint<9> valsToOutput2;
     if(boundary < 3){
-        valsToOutput1 = ((ap_uint<9>)(*currentOverflow | ((val >> (5 + boundary)) & 0xFF)));
+        valsToOutput1 = (currentOverflow | ((val >> (5 + boundary)) & 0xFF));
         numOutput = 1;
-        *currentOverflow = (uint8_t)(val << (8 - boundary));
+        currentOverflow = (uint8_t)(val << (3 - boundary));
 	}//0, 1, 2
 	else if (boundary == 3){
-        valsToOutput1 = ((ap_uint<9>)(*currentOverflow | ((val >> (5 + boundary)) & 0xFF)));
-        valsToOutput2 = ((ap_uint<9>)(val & 0xFF));
+        valsToOutput1 = (currentOverflow | ((val >> (5 + boundary)) & 0xFF));
+        valsToOutput2 = (val & 0xFF);
         numOutput = 2;
-        *currentOverflow = 0;
+        currentOverflow = 0;
 	}//3
 	else{
-		valsToOutput1 = ((ap_uint<9>)(*currentOverflow | (val >> (5 + boundary))));
-        valsToOutput2 = ((ap_uint<9>)((val >> ((5 + boundary) & 0x7)) & 0xFF));
+		valsToOutput1 = (currentOverflow | (val >> (5 + boundary)));
+        valsToOutput2 = ((val >> ((5 + boundary) & 0x7)) & 0xFF);
         numOutput = 2;
-        *currentOverflow = (uint8_t)(val << (11 - boundary));
+        currentOverflow = (uint8_t)(val << (11 - boundary));
     }//5,6,7,8
-    boundary = (boundary + 13) % 8;
+    boundary = (boundary + 5) & 0x7;
 
     output.write(valsToOutput1);
     if (numOutput == 2){
@@ -202,11 +204,13 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 	#pragma HLS array_partition variable=hashTable dim=1
 
     resetValidityTable();
-    uint8_t boundary = 0;//what bit of an output byte we'd write next
-    uint8_t currentBitOverflow = 0;//stores our extra bits
+    boundary = 0;//what bit of an output byte we'd write next
+    currentOverflow = 0;//stores our extra bits
 
-    ///index of the outBuffer element we're writing
+    ///keeps track of how many bytes we've written
     uint16_t oidx = 0;
+    ///keeps track of how many records we've written
+    uint16_t numWritten = 0;
 
     ap_uint<13> curTableRow = (ap_uint<13>)(input.read());
     for(uint16_t iidx = 1; iidx < MAXCHUNKLENGTH; iidx++) {
@@ -215,7 +219,8 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
         ap_uint<9> readChar = input.read();
         iidx++;
         if (readChar > 255){
-            oidx += writeToOutput(curTableRow, boundary, &currentBitOverflow, output);
+            oidx += writeToOutput(curTableRow, output);
+            numWritten++;
 
             break;
             //return oidx;//TODO: don't return, break and reset validity table...?
@@ -230,18 +235,20 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
                 curTableRow = currentTableValue;
             }
             else {
-                oidx += writeToOutput(curTableRow, boundary, &currentBitOverflow, output);
-                ap_uint<13> valToWrite = oidx + MAXCHARVAL - 1;
+                oidx += writeToOutput(curTableRow, output);
+                numWritten++;
+                ap_uint<13> valToWrite = numWritten + MAXCHARVAL - 1;
                 uint8_t freeSlot = writeToTable(key, valToWrite, validityEntry, hashedKey);
                 validityTable[hashedKey] = validityEntry | (1 << freeSlot);
+                curTableRow = curChar;
             }
         }//else, legit value
 
     }
-    output.write(currentBitOverflow);
+    output.write(currentOverflow);
     output.write(256);
-    oidx += 2;
-    return oidx;
+    oidx += 1;//not counting trailing "stop byte"
+    return oidx + 4;
 
 }//lzwCompress
 

@@ -87,7 +87,7 @@ int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElement
 			}
 		}
 		else{
-			printf("G\tCandidate value of 0x%02x matched golden value of 0x%02x at position [%d]\n", cand[i], gold[i], i);
+			//printf("G\tCandidate value of 0x%02x matched golden value of 0x%02x at position [%d]\n", cand[i], gold[i], i);
 		}
 	}//for
 	printf("Two arrays equal!!!!!!!!!!\n");
@@ -149,15 +149,16 @@ int main(int argc, char *argv[]) {
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-                printf("Input:\t[0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x...\n",
+                printf("Input:\t[0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x...\n\tSize:%d\n",
                 		buf[last_chunk.start + 0], buf[last_chunk.start + 1], buf[last_chunk.start + 2],
-						buf[last_chunk.start + 3], buf[last_chunk.start + 4], buf[last_chunk.start + 5]);
+						buf[last_chunk.start + 3], buf[last_chunk.start + 4], buf[last_chunk.start + 5],
+						last_chunk.length);
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 int compress_size2 = lzwCompressWrapper(&buf[last_chunk.start], last_chunk.length, &compress2[4]);
 
                 printf("compress_size [%d], compress_size2 [%d]\n", compress_size, compress_size2);
-                uint32_t header = (compress_size2 + 4) << 1;
-                memcpy((uint32_t*)&compress2[0], &header, 1 * sizeof(uint32_t));
+                uint32_t header = (compress_size2 - 4) << 1;
+                memcpy((void*)&compress2[0], &header, 1 * sizeof(uint32_t));
                 compareArrays(compress2, compress, compress_size);
 #ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);
