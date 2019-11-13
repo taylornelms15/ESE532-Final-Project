@@ -22,9 +22,8 @@ extern "C"{
 // 1MiB buffer
 uint8_t* buf;
 size_t bytes;
-static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.tar";
-static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.dat";
-static const char outfileNameGold[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/vmlinuz.datgold";
+static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
+static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
 
 void Check_error(int Error, const char * Message)
 {
@@ -105,7 +104,7 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
     uint8_t compress[MAXSIZE];
-    uint8_t compress2[MAXSIZE];
+
     printf("Starting main function\n");
 
     buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
@@ -128,9 +127,6 @@ int main(int argc, char *argv[]) {
 #else
     FILE* File = fopen(outfileName, "wb");
     if (File == NULL)
-        Exit_with_error();
-    FILE* FileGold = fopen(outfileNameGold, "wb");
-    if (FileGold == NULL)
         Exit_with_error();
 
 #endif
@@ -225,7 +221,6 @@ int main(int argc, char *argv[]) {
     f_close(&File);
 #else
     fclose(File);
-    fclose(FileGold);
 #endif
     free(buf);
 
