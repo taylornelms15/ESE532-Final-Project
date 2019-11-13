@@ -198,6 +198,8 @@ int main(int argc, char *argv[]) {
 #else
             int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
 #endif
+
+
 #ifdef __SDSCC__
             f_write(&File, compress, compress_size, &bytes_read);
 #else
