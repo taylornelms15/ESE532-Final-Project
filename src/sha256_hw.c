@@ -38,13 +38,16 @@ void sha256_hw_init()
 
 }
 
-/*********************** FUNCTION DEFINITIONS ***********************/
+/*********************** FUNCTION DEFINITIONS *********************** */
+
+// TODO: Receive stream for data here - Need to use hls stream ?
 void sha256_hw_transform(const BYTE data[], unsigned int state[])
 {
 	WORD_SHA a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
+
 	for ( ; i < 64; ++i)
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
@@ -57,7 +60,8 @@ void sha256_hw_transform(const BYTE data[], unsigned int state[])
 	g = state[6];
 	h = state[7];
 
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 64; ++i)
+	{
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;
@@ -70,6 +74,7 @@ void sha256_hw_transform(const BYTE data[], unsigned int state[])
 		a = t1 + t2;
 	}
 
+	// TODO: Do this parallel
 	state[0] += a;
 	state[1] += b;
 	state[2] += c;
@@ -80,10 +85,13 @@ void sha256_hw_transform(const BYTE data[], unsigned int state[])
 	state[7] += h;
 }
 
+#pragma SDS data access_pattern(data:SEQUENTIAL, hash:SEQUENTIAL)
 /** Top-level function */
 void sha256_hw_compute(const BYTE data[], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
+#pragma HLS array_partition variable=state
 	unsigned int state[8];
+
 	state[0] = 0x6a09e667;
 	state[1] = 0xbb67ae85;
 	state[2] = 0x3c6ef372;
@@ -93,17 +101,23 @@ void sha256_hw_compute(const BYTE data[], size_t len, BYTE hash[SHA256_BLOCK_SIZ
 	state[6] = 0x1f83d9ab;
 	state[7] = 0x5be0cd19;
 
-	unsigned int datalen = 0;
+	unsigned int datalen = 0, total_len = 0;
 	unsigned long long bitlen = 0;
 
-	for (unsigned int i = 0; i < len; ++i)
+	main_loop:for (unsigned int i = 0; i < len; ++i)
 	{
+#pragma HLS pipeline
 		datalen++;
-		if (datalen == 64) {
-			sha256_transform(data + len, state);
+		if (datalen == 64)
+		{
+			// TODO: Use HLS stream here for sending data of 64 bytes ?
+			// TODO: How to send state - need to read as well as write
+			sha256_transform(data + total_len, state);
 			bitlen += 512;
 			datalen = 0;
 		}
+
+		total_len++;
 	}
 
 	/** Compute the final SHA */
