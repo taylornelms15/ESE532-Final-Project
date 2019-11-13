@@ -6,7 +6,16 @@
 #include "lzw_hw.h"
 
 #define NONEFOUND 0x1FFF
-#define HASH_DEPTH 24//depth of the hash bucket (capacity = (8k vals / 1k rows) * (3x capacity variance buffer))
+//Tunable design axis parameters
+#define HDEPTH 24//depth of the hash bucket (capacity = (8k vals / 1k rows) * (3x capacity variance buffer))
+#define ROWNUM (MAXCHUNKLENGTH)
+#define ROWBITS 13//log2(number of rows)
+#define COLNUM (MAXCHARVAL)
+#define COLBITS 8//log2(number of columns)
+#define HBUCKETS 1024//number of hash buckets
+#define HBITS 10//log2(number of hash buckets)
+#define KEYLEN (ROWBITS + COLBITS)
+#define HRBITS (KEYLEN + ROWBITS)//number of bits in a "hash record" (key+val pairing)
 
 /*
 Thoughts about space:
@@ -67,8 +76,8 @@ But, hash function not great, budget for 24k entries
 So, 12 2-deep tables, meaning 24 BRAMs for it
 */
 
-static ap_uint<34> hashTable [HASH_DEPTH][1024];//1 wide, 1024 tall, 24 deep)
-static ap_uint<HASH_DEPTH> validityTable[1024];//bitmask for each of the hash table entries
+static ap_uint<HRBITS> hashTable [HDEPTH][HBUCKETS];//1 wide, 1024 tall, 24 deep)
+static ap_uint<HDEPTH> validityTable[HBUCKETS];//bitmask for each of the hash table entries
 
 static uint8_t boundary = 0;
 static uint8_t currentOverflow = 0;
@@ -81,7 +90,7 @@ static uint8_t currentOverflow = 0;
  * As such, a factor of around 3 for the actual hash table should be able to hold most/all of the required values,
  * with a smaller associative memory handling the overflow
  */
-ap_uint<10> hashKey(const ap_uint<21> key){
+ap_uint<HBITS> hashKey(const ap_uint<KEYLEN> key){
 
 
     uint8_t vlo4    = (key)         & 0xF;
@@ -99,25 +108,24 @@ ap_uint<10> hashKey(const ap_uint<21> key){
     retval          ^= (sub8 << 1);
     retval          ^= (hiT4 << 6);
     retval          &= 0x3FF;
-    return (ap_uint<10>) retval;
+    return (ap_uint<HBITS>) retval;
 
 }//hashKey
 
 void resetValidityTable(){
-	for(int i = 0; i < 1024; i++){
+	for(int i = 0; i < HBUCKETS; i++){
 		validityTable[i] = 0;
 	}
-    //memset(validityTable, 0x00, 1024 * 3);
 }//resetValidityTable
 
-uint8_t writeToTable(const ap_uint<21> key, const ap_uint<13> val,
-				const ap_uint<HASH_DEPTH> validityMask, const ap_uint<10> hashedKey){
+uint8_t writeToTable(const ap_uint<KEYLEN> key, const ap_uint<ROWBITS> val,
+				const ap_uint<HDEPTH> validityMask, const ap_uint<HBITS> hashedKey){
 	#pragma HLS inline
     #pragma HLS pipeline II=1
     int i;
-    uint8_t freeSlot = HASH_DEPTH;
+    uint8_t freeSlot = HDEPTH;
     //want position of rightmost 0 bit of validityMask
-    for(i = HASH_DEPTH - 1; i >=0; i--){
+    for(i = HDEPTH - 1; i >=0; i--){
         #pragma HLS unroll
         if (!(validityMask & (1 << i))){
             freeSlot = i;
@@ -125,8 +133,7 @@ uint8_t writeToTable(const ap_uint<21> key, const ap_uint<13> val,
     }//for
     //TODO: handle overflow, and going to associative memory?
 
-    ap_uint<34> entryToWrite = ((( ap_uint<34> ) key) << 13) | (val);
-    //ap_uint<34> entryToWrite = (((ap_uint<34>) row) << 21) | (((ap_uint<34>) col) << 13) | (val);
+    ap_uint<HRBITS> entryToWrite = ((( ap_uint<HRBITS> ) key) << ROWBITS) | (val);
     hashTable[freeSlot][hashedKey] = entryToWrite;
 
     return freeSlot;
@@ -138,26 +145,26 @@ uint8_t writeToTable(const ap_uint<21> key, const ap_uint<13> val,
  * Reads a value from the LZW table
  * If not found, returns 0x1FFF
  */
-ap_uint<13> readFromTable(ap_uint<21> key, ap_uint<HASH_DEPTH> validityEntry, ap_uint<10> hashedKey){
+ap_uint<ROWBITS> readFromTable(ap_uint<KEYLEN> key, ap_uint<HDEPTH> validityEntry, ap_uint<HBITS> hashedKey){
     #pragma HLS inline
 	#pragma HLS pipeline II=1
 
-    ap_uint<13> retval = NONEFOUND;
+    ap_uint<ROWBITS> retval = NONEFOUND;
 
 
-    ap_uint<34> potentialValues[HASH_DEPTH];
+    ap_uint<HRBITS> potentialValues[HDEPTH];
     #pragma HLS ARRAY_RESHAPE variable=potentialValues block factor=2 dim=1
-    for(uint8_t i = 0; i < HASH_DEPTH; i++){
+    for(uint8_t i = 0; i < HDEPTH; i++){
         #pragma HLS unroll
-        ap_uint<34> candidate = hashTable[i][hashedKey];
+        ap_uint<HRBITS> candidate = hashTable[i][hashedKey];
         potentialValues[i] = candidate;
     }//for
     
-    for(uint8_t i = 0; i < HASH_DEPTH; i++){
+    for(uint8_t i = 0; i < HDEPTH; i++){
 		#pragma HLS unroll
-        ap_uint<21> keyCandidate = (ap_uint<21>)(potentialValues[i] >> 13);
+        ap_uint<KEYLEN> keyCandidate = (ap_uint<KEYLEN>)(potentialValues[i] >> ROWBITS);
         if (keyCandidate == key && (validityEntry & (1 << i))){
-            retval = (ap_uint<13>)(potentialValues[i]);
+            retval = (ap_uint<ROWBITS>)(potentialValues[i]);
         }//if a match
     }//for
 
@@ -165,7 +172,7 @@ ap_uint<13> readFromTable(ap_uint<21> key, ap_uint<HASH_DEPTH> validityEntry, ap
     return retval;
 }//readFromTable
 
-uint8_t writeToOutput(const ap_uint<13> val, hls::stream< ap_uint<9> > &output ){
+uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &output ){
 	#pragma HLS inline
 	uint8_t numOutput = 0;
     ap_uint<9> valsToOutput1;
@@ -200,7 +207,6 @@ uint8_t writeToOutput(const ap_uint<13> val, hls::stream< ap_uint<9> > &output )
 }//writeToOutput
 
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
-    //#pragma HLS ARRAY_RESHAPE variable=hashTable block factor=2 dim=1
 	#pragma HLS array_partition variable=hashTable dim=1
 
     resetValidityTable();
@@ -212,12 +218,11 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     ///keeps track of how many records we've written
     uint16_t numWritten = 0;
 
-    ap_uint<13> curTableRow = (ap_uint<13>)(input.read());
-    for(uint16_t iidx = 1; iidx < MAXCHUNKLENGTH; iidx++) {
+    ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
+    for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
 		#pragma HLS loop_tripcount min=1024 max=8192 avg=4096
         #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
-        iidx++;
         if (readChar > 255){
             oidx += writeToOutput(curTableRow, output);
             numWritten++;
@@ -227,17 +232,17 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
         }//if end-of-stream value
         else{
             uint8_t curChar = (uint8_t)readChar;
-            ap_uint<21> key = (((ap_uint<21>) curTableRow) << 8) | curChar;
-            ap_uint<10> hashedKey = hashKey(key);
-            ap_uint<HASH_DEPTH> validityEntry = validityTable[hashedKey];
-            ap_uint<13> currentTableValue = readFromTable(key, validityEntry, hashedKey);
+            ap_uint<KEYLEN> key = (((ap_uint<KEYLEN>) curTableRow) << COLBITS) | curChar;
+            ap_uint<HBITS> hashedKey = hashKey(key);
+            ap_uint<HDEPTH> validityEntry = validityTable[hashedKey];
+            ap_uint<ROWBITS> currentTableValue = readFromTable(key, validityEntry, hashedKey);
             if (currentTableValue != NONEFOUND){
                 curTableRow = currentTableValue;
             }
             else {
                 oidx += writeToOutput(curTableRow, output);
                 numWritten++;
-                ap_uint<13> valToWrite = numWritten + MAXCHARVAL - 1;
+                ap_uint<ROWBITS> valToWrite = numWritten + MAXCHARVAL - 1;
                 uint8_t freeSlot = writeToTable(key, valToWrite, validityEntry, hashedKey);
                 validityTable[hashedKey] = validityEntry | (1 << freeSlot);
                 curTableRow = curChar;
@@ -245,9 +250,12 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
         }//else, legit value
 
     }
-    output.write(currentOverflow);
-    output.write(256);
-    oidx += 1;//not counting trailing "stop byte"
+    if (boundary != 0){
+    	output.write(currentOverflow);
+    	oidx += 1;//not counting stop byte in our oidx
+    }
+    output.write(0x100);
+
     return oidx + 4;
 
 }//lzwCompress
@@ -255,7 +263,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::stream< ap_uint<9> > &inHW){
 	for(int i = 0; i < numElements; i++){
 		#pragma HLS pipeline II=1
-		#pragma HLS loop_tripcount min=1024 max=8192 avg=4096
+		#pragma HLS loop_tripcount min=1024 max=8192
 		uint8_t nextInput = input[i];
 		inHW.write((ap_uint<9>)(nextInput));
 	}
@@ -264,7 +272,7 @@ void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::st
 
 void outputFromStream(hls::stream< ap_uint<9> > &outHW, uint8_t output[MAXCHUNKLENGTH]){
     //uint32_t header = (numOutput + 4) << 1;//bit 0 is 0 because LZW chunk, the rest is the size of the data. Subtracting 4 to get "size of LZW" part sans header
-    int oidx = 0;
+
     //output[oidx++] = (uint8_t)(header >> 0);
     //output[oidx++] = (uint8_t)(header >> 8);
     //output[oidx++] = (uint8_t)(header >> 16);
@@ -273,20 +281,22 @@ void outputFromStream(hls::stream< ap_uint<9> > &outHW, uint8_t output[MAXCHUNKL
 
 	for(int i = 0; i < MAXCHUNKLENGTH; i++){
 		#pragma HLS pipeline II=1
-		#pragma HLS loop_tripcount min=1 max=8192 avg=2048
+		#pragma HLS loop_tripcount min=1 max=8192
+		uint8_t valToOutput = 0;
 		if (!foundEnd){
 		    ap_uint<9> nextOutput = outHW.read();
-		    if (nextOutput < 256){
-			    output[oidx++] = nextOutput;
+		    if(nextOutput & 0x100){
+		    	valToOutput = 0;
+			    foundEnd = 1;
 		    }
 		    else{
-		    	output[oidx++] = 0;
-			    foundEnd = 1;
+			    valToOutput = nextOutput;
 		    }
 		}//reading from stream still
 		else{
-			output[oidx++] = 0;
+			valToOutput = 0;
 		}
+		output[i] = valToOutput;
 	}
 
 }

@@ -13,7 +13,6 @@
 #define MAXCHUNKLENGTH (MAXSIZE)
 
 
-
 #define MAXCHARVAL 256
 
 

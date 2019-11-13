@@ -23,6 +23,7 @@ uint8_t* buf;
 size_t bytes;
 static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
 static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char outfileNameGold[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.datgold";
 
 void Check_error(int Error, const char * Message)
 {
@@ -90,7 +91,7 @@ int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElement
 			//printf("G\tCandidate value of 0x%02x matched golden value of 0x%02x at position [%d]\n", cand[i], gold[i], i);
 		}
 	}//for
-	printf("Two arrays equal!!!!!!!!!!\n");
+	//printf("Two arrays equal!!!!!!!!!!\n");
 	return 0;
 }
 
@@ -127,6 +128,9 @@ int main(int argc, char *argv[]) {
     FILE* File = fopen(outfileName, "wb");
     if (File == NULL)
         Exit_with_error();
+    FILE* FileGold = fopen(outfileNameGold, "wb");
+    if (FileGold == NULL)
+        Exit_with_error();
 
 #endif
 
@@ -149,21 +153,25 @@ int main(int argc, char *argv[]) {
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-                printf("Input:\t[0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x...\n\tSize:%d\n",
-                		buf[last_chunk.start + 0], buf[last_chunk.start + 1], buf[last_chunk.start + 2],
-						buf[last_chunk.start + 3], buf[last_chunk.start + 4], buf[last_chunk.start + 5],
-						last_chunk.length);
+                //printf("Input:\t[0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x...\n\tSize:%d\n",
+                //		buf[last_chunk.start + 0], buf[last_chunk.start + 1], buf[last_chunk.start + 2],
+				//		buf[last_chunk.start + 3], buf[last_chunk.start + 4], buf[last_chunk.start + 5],
+				//		last_chunk.length);
                 int compress_size = lzwCompress(&buf[last_chunk.start], last_chunk.length, compress);
                 int compress_size2 = lzwCompressWrapper(&buf[last_chunk.start], last_chunk.length, &compress2[4]);
 
-                printf("compress_size [%d], compress_size2 [%d]\n", compress_size, compress_size2);
+                printf("compress_size [%d],\tcompress_size2 [%d]\n", compress_size, compress_size2);
                 uint32_t header = (compress_size2 - 4) << 1;
                 memcpy((void*)&compress2[0], &header, 1 * sizeof(uint32_t));
+                header = (compress_size - 4) << 1;
+                memcpy((void*)&compress[0], &header, 1 * sizeof(uint32_t));//shouldn't be necessary, is for some reason
                 compareArrays(compress2, compress, compress_size);
 #ifdef __SDSCC__
-                f_write(&File, compress, compress_size, &bytes_read);
+                //f_write(&File, compress, compress_size, &bytes_read);
+                f_write(&File, compress2, compress_size2, &bytes_read);
 #else
-                fwrite(compress, sizeof(uint8_t), compress_size, File);
+                fwrite(compress, sizeof(uint8_t), compress_size, FileGold);
+                fwrite(compress2, sizeof(uint8_t), compress_size2, File);
 #endif
             }//if not found in table
             else{
@@ -174,6 +182,7 @@ int main(int argc, char *argv[]) {
                 f_write(&File, &dupPacket, 4, &bytes_read);
 #else
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+                fwrite(&dupPacket, sizeof(uint32_t), 1, FileGold);
 #endif
 
             }//if found in table
@@ -196,6 +205,7 @@ int main(int argc, char *argv[]) {
             f_write(&File, compress, compress_size, &bytes_read);
 #else
             fwrite(compress, sizeof(uint8_t), compress_size, File);
+            fwrite(compress, sizeof(uint8_t), compress_size, FileGold);
 #endif
         }//if not found in table
         else{
@@ -206,6 +216,7 @@ int main(int argc, char *argv[]) {
             f_write(&File, &dupPacket, 4, &bytes_read);
 #else
             fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+            fwrite(&dupPacket, sizeof(uint32_t), 1, FileGold);
 #endif
 
         }//if found in table
@@ -215,6 +226,7 @@ int main(int argc, char *argv[]) {
     f_close(&File);
 #else
     fclose(File);
+    fclose(FileGold);
 #endif
     free(buf);
 
