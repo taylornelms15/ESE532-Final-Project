@@ -122,13 +122,13 @@ void rabin_reset(struct rabin_t *h) {
 
 
 #pragma SDS data access_pattern(buf:SEQUENTIAL, chunk:SEQUENTIAL)
-#pragma SDS data copy(buf[0:MAXSIZE], chunk[0:MAXSIZE])
+#pragma SDS data copy(buf[0:len], chunk[0:MAXSIZE])
 int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned int len) {
 	unsigned int count = h->count;
     unsigned int pos = h->pos;
     uint64_t digest = h->digest;
     uint8_t wpos = 0;
-    uint8_t is_stop = 0;
+   // uint8_t is_stop = 0;
 
 
 
@@ -137,7 +137,7 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXS
 		#pragma HLS pipeline II=1
         uint8_t b = buf[i];
 
-        if (is_stop == 0) {
+     //   if (is_stop == 0) {
         uint8_t out = h->window[wpos];
         h->window[wpos] = b;
         wpos = (wpos +1 ) % WINSIZE;
@@ -150,9 +150,12 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXS
         count++;
         pos++;
         chunk[i] = b;
-        }
+       // }
 
-        if ((is_stop == 0) && ((count >= MINSIZE) && (digest & MASK) == 0) || count >= MAXSIZE) {
+      //  if (((count >= MINSIZE) && (digest & MASK) == 0) || count >= MAXSIZE) {
+        if (count >= MINSIZE) {
+        	if((digest & MASK) == 0) {
+
             last_chunk.start = h->start;
             last_chunk.length = count;
             last_chunk.cut_fingerprint =  digest;
@@ -170,15 +173,40 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXS
                 h->pos = 0;
             h->start = pos;
             h->pos = pos;
-            is_stop = 1;
-            //return last_chunk.length;
+           // is_stop = 1;
+            return last_chunk.length;
+            //return i+1;
         }
+        if(count >= MAXSIZE) {
+        	 last_chunk.start = h->start;
+        	            last_chunk.length = count;
+        	            last_chunk.cut_fingerprint =  digest;
+        	            last_chunk.byte[count] = '\0';
+        	            // keep position
+        	            //unsigned int pos = h.pos;
+        	#pragma HLS ARRAY_PARTITION variable=h->window dim=0 complete
+        	            for (int i = 0; i < WINSIZE; i++)
+        	                    h->window[i] = 0;
+        	                h->digest = 0;
+        	                h->wpos = 0;
+        	                h->count = 0;
+        	                h->digest = 0;
+        	                h->start = 0;
+        	                h->pos = 0;
+        	            h->start = pos;
+        	            h->pos = pos;
+        	           // is_stop = 1;
+        	            return last_chunk.length;
+        	            //return i+1;
 
+        	}
+        }
     }
 	h->count = count;
 	h->pos = pos;
 
-	return last_chunk.length;
+	return -1;
+	//last_chunk.length;
 
 }
 

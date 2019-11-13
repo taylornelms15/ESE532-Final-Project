@@ -112,10 +112,10 @@ int main(int argc, char *argv[]) {
     bytes += len;
     int remaining;
 
-        while (len > MAXSIZE) {
+        while (len > 0) {
 
-        	if(len > MAXSIZE)
-        		remaining = rabin_next_chunk(hash, ptr, chunk, MAXSIZE);
+        	//if(len > MAXSIZE)
+        		remaining = rabin_next_chunk(hash, ptr, chunk, len);
         	//else
         		//remaining = rabin_next_chunk(hash, ptr, chunk, len);
 
@@ -127,12 +127,12 @@ int main(int argc, char *argv[]) {
             ptr += remaining;
 
             sha256_init(&ctx);
-            sha256_update(&ctx, chunk, remaining);
+            sha256_update(&ctx, chunk, last_chunk.length);
             sha256_final(&ctx, sha_buf);
 
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
-                int compress_size = lzwCompress(&chunk[0], remaining, compress);
+                int compress_size = lzwCompress(&chunk[0], last_chunk.length, compress);
 #ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_read);
 #else
