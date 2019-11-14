@@ -22,7 +22,11 @@ extern "C"{
 #else
 #define MEASURING_LATENCY 0
 #endif
+#define READING_FROM_SERVER 1
 
+#if READING_FROM_SERVER
+#include "server.h"
+#endif
 
 #include "common.h"
 
@@ -140,6 +144,12 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
 
+    //Server things
+    ESE532_Server Server = ESE532_Server();
+    Server.setup_server();
+
+
+    //Allocation things
     uint8_t* compress = Allocate(MAXSIZE + 4);
     printf("Compress allocated at %x\n", compress);
 
@@ -149,23 +159,46 @@ int main(int argc, char *argv[]) {
     buf = Allocate(MAXINPUTFILESIZE * sizeof(uint8_t));
     printf("buf allocated at %x\n", buf);
 
+
+    
 #if MEASURING_LATENCY
     unsigned long long numBytesUncompressed = 0;//number of bytes fed into LZW
     unsigned long long numBytesCompressed   = 0;//number of bytes fed out of LZW
     unsigned long long timeInLZW            = 0;//how many cycles we spent in LZW
 #endif
 
+#if READING_FROM_SERVER
+    //Fill buffer from server
+    uint32_t currentIndex = 0;
+    while(currentIndex < MAXINPUTFILESIZE){
+        int thisPacketBytes = Server.get_packet(buf + currentIndex);
+        if (thisPacketBytes < 0){
+            printf("Read %d total bytes from network\n", currentIndex + 1);
+            break;
+        }//end of transmission
+        currentIndex += thisPacketBytes;
+        
+    }//while
+    unsigned int len = currentIndex + 1;
+
+#else
+    //read data from file system
+
 #ifdef __SDSCC__
     FATFS FS;
-    unsigned int bytes_read;
 
     Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
 #endif
 
     unsigned int len = Load_data(buf);
 
+
+#endif//not reading from server
+
+    //Set up output file
 #ifdef __SDSCC__
     FIL File;
+    unsigned int bytes_written;
 
     FRESULT Result = f_open(&File, linuxOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
     Check_error(Result != FR_OK, "Could not open output file.");
@@ -176,6 +209,8 @@ int main(int argc, char *argv[]) {
         Exit_with_error();
 
 #endif
+
+    //actually run our program
 
     uint8_t *ptr = buf;
     uint8_t chunk[MAXSIZE];
@@ -232,7 +267,7 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef __SDSCC__
-                f_write(&File, compress, compress_size, &bytes_read);
+                f_write(&File, compress, compress_size, &bytes_written);
 #else
                 fwrite(compress, sizeof(uint8_t), compress_size, File);
 
@@ -243,7 +278,7 @@ int main(int argc, char *argv[]) {
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
 #ifdef __SDSCC__
-                f_write(&File, &dupPacket, 4, &bytes_read);
+                f_write(&File, &dupPacket, 4, &bytes_written);
 #else
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #endif
@@ -276,7 +311,7 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef __SDSCC__
-            f_write(&File, compress, compress_size, &bytes_read);
+            f_write(&File, compress, compress_size, &bytes_written);
 #else
             fwrite(compress, sizeof(uint8_t), compress_size, File);
             printf("Compress fhash size: %d\n", compress_size);
@@ -287,7 +322,7 @@ int main(int argc, char *argv[]) {
             dupPacket <<= 1;
             dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
 #ifdef __SDSCC__
-            f_write(&File, &dupPacket, 4, &bytes_read);
+            f_write(&File, &dupPacket, 4, &bytes_written);
 #else
             fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #endif
