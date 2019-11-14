@@ -17,6 +17,13 @@ extern "C"{
 
 #define USING_LZW_HW
 
+#ifdef __SDSCC__
+#define MEASURING_LATENCY 1
+#else
+#define MEASURING_LATENCY 0
+#endif
+
+
 #include "common.h"
 
 // 1MiB buffer
@@ -24,6 +31,8 @@ uint8_t* buf;
 size_t bytes;
 static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
 static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char linuxInfileName[] = "linux.tar";
+static const char linuxOutfileName[] = "linux.dat";
 
 void Check_error(int Error, const char * Message)
 {
@@ -40,6 +49,30 @@ void Exit_with_error(void)
   exit(EXIT_FAILURE);
 }
 
+uint8_t* Allocate(int Size){
+  uint8_t* Frame = (uint8_t*)
+#ifdef __SDSCC__
+      sds_alloc(Size);
+#else
+      malloc(Size);
+#endif
+  if (Frame == NULL){
+	  printf("ERROR: Could not allocate memory\n");
+	  exit(EXIT_FAILURE);
+  }
+
+  return Frame;
+}
+
+void Free(uint8_t* Frame){
+#ifdef __SDSCC__
+  sds_free(Frame);
+#else
+  free(Frame);
+#endif
+}
+
+
 
 
 unsigned int Load_data(unsigned char * Data)
@@ -50,7 +83,7 @@ unsigned int Load_data(unsigned char * Data)
 #ifdef __SDSCC__
   FIL File;
 
-  FRESULT Result = f_open(&File, "ucomp.txt", FA_READ);
+  FRESULT Result = f_open(&File, linuxInfileName, FA_READ);
   Check_error(Result != FR_OK, "Could not open input file.");
 
   Result = f_read(&File, Data, Size, &Bytes_read);
@@ -103,11 +136,19 @@ int main(int argc, char *argv[]) {
     sha256_init(&ctx);
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
-    uint8_t compress[MAXSIZE];
+    uint8_t* compress = Allocate(MAXSIZE + 4);
+    printf("Compress allocated at %x\n", compress);
 
     printf("Starting main function\n");
 
-    buf = (uint8_t*)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
+    buf = Allocate(MAXINPUTFILESIZE * sizeof(uint8_t));
+    printf("buf allocated at %x\n", buf);
+
+#if MEASURING_LATENCY
+    unsigned long long numBytesUncompressed = 0;//number of bytes fed into LZW
+    unsigned long long numBytesCompressed   = 0;//number of bytes fed out of LZW
+    unsigned long long timeInLZW            = 0;//how many cycles we spent in LZW
+#endif
 
 #ifdef __SDSCC__
     FATFS FS;
@@ -121,7 +162,7 @@ int main(int argc, char *argv[]) {
 #ifdef __SDSCC__
     FIL File;
 
-    FRESULT Result = f_open(&File, "compress.dat", FA_WRITE | FA_CREATE_ALWAYS);
+    FRESULT Result = f_open(&File, linuxOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
     Check_error(Result != FR_OK, "Could not open output file.");
 
 #else
@@ -151,7 +192,20 @@ int main(int argc, char *argv[]) {
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
 #ifdef USING_LZW_HW
-                int compress_size = lzwCompressWrapper(&buf[last_chunk.start], last_chunk.length, &compress[4]);
+
+                #if MEASURING_LATENCY
+            	    numBytesUncompressed += last_chunk.length;
+                    unsigned long long lzw_start = sds_clock_counter();
+                #endif
+
+				int compress_size = lzwCompressWrapper(&buf[last_chunk.start], last_chunk.length, compress + 4);
+				unsigned long long thisTimeForLZW;
+                #if MEASURING_LATENCY
+                    thisTimeForLZW = sds_clock_counter() - lzw_start;
+                    timeInLZW += thisTimeForLZW;
+                    numBytesCompressed += compress_size;
+                    printf("LZW compressed a chunk from\t[%d] to\t[%d] bytes in\t[%d] cycles\n", last_chunk.length, compress_size, thisTimeForLZW);
+                #endif
                 uint32_t header = (compress_size - 4) << 1;
                 memcpy((void*)&compress[0], &header, 1 * sizeof(uint32_t));
 #else
@@ -219,12 +273,13 @@ int main(int argc, char *argv[]) {
         }//if found in table
     }
 
-#ifdef __SDSCC
+#ifdef __SDSCC__
     f_close(&File);
 #else
     fclose(File);
 #endif
-    free(buf);
+    Free(buf);
+    Free(compress);
 
     unsigned int avg = 0;
     if (chunks > 0)

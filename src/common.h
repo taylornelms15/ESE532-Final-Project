@@ -4,6 +4,8 @@
  * A header file for access by multiple other source files, for various purposes
  */
 
+#define HALF_ENABLE_CPP11_CMATH 0
+
 #ifndef COMMON_H
 #define COMMON_H
 
