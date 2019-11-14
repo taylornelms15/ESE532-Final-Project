@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include<string.h>
 #include<stdio.h>
-#include "sha256_hw.h"
+#include "sha_256.h"
 
 /** Reference : https://github.com/B-Con/crypto-algorithms */
 
@@ -17,9 +17,10 @@
 #define SIG0(x) (ROTRIGHT(x,7) ^ ROTRIGHT(x,18) ^ ((x) >> 3))
 #define SIG1(x) (ROTRIGHT(x,17) ^ ROTRIGHT(x,19) ^ ((x) >> 10))
 
-/**************************** VARIABLES *****************************/
+void sha256_hw_final(unsigned int datalen, unsigned int state[8], BYTE data[], unsigned long long bitlen, BYTE hash[]);
 
 
+/**
 void sha256_hw_init()
 {
 	static const WORD_SHA k[64] = {
@@ -33,13 +34,25 @@ void sha256_hw_init()
 		0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 	};
 }
-
+*/
 /*********************** FUNCTION DEFINITIONS *********************** */
 
 // TODO: Receive stream for data here - Need to use hls stream ?
-void sha256_hw_transform(const BYTE data[], unsigned int state[])
+void sha256_hw_transform(const BYTE data[], WORD_SHA state[])
 {
+	static const WORD_SHA k[64] = {
+				0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+				0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+				0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+				0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+				0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+				0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+				0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+				0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+			};
+
 	WORD_SHA a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
+
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
@@ -87,7 +100,7 @@ void sha256_hw_transform(const BYTE data[], unsigned int state[])
 void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
 #pragma HLS array_partition variable=state
-	unsigned int state[8];
+	WORD_SHA state[8];
 
 	state[0] = 0x6a09e667;
 	state[1] = 0xbb67ae85;
@@ -99,7 +112,6 @@ void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE
 	state[7] = 0x5be0cd19;
 
 	BYTE subchunk[64];
-
 
 	unsigned int datalen = 0, total_len = 0;
 	unsigned long long bitlen = 0;
@@ -113,19 +125,24 @@ void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE
 		{
 			// TODO: Use HLS stream here for sending data of 64 bytes ?
 			// TODO: How to send state - need to read as well as write
-			sha256_transform(subchunk, state);
+			sha256_hw_transform(subchunk, state);
 			bitlen += 512;
 			datalen = 0;
 		}
 
 		total_len++;
 	}
-
+/*
+	printf("state variables:\n");
+	for(int i = 0; i < 8; i++)
+		printf("%u ", state[i]);
+	printf("\n");
+*/
 	/** Compute the final SHA */
-	sha256_final(datalen, state, subchunk, bitlen, hash);
+	sha256_hw_final(datalen, state, subchunk, bitlen, hash);
 }
 
-void sha256_hw_final(unsigned int datalen, unsigned int state[8], const BYTE data[], unsigned long long bitlen, BYTE hash[])
+void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[], unsigned long long bitlen, BYTE hash[])
 {
 	WORD_SHA i;
 
@@ -138,13 +155,19 @@ void sha256_hw_final(unsigned int datalen, unsigned int state[8], const BYTE dat
 			data[i++] = 0x00;
 	}
 	else {
+		//printf("len greater then 56\n");
 		data[i++] = 0x80;
 		while (i < 64)
 			data[i++] = 0x00;
-		sha256_transform(data, state);
+		sha256_hw_transform(data, state);
 		memset(data, 0, 56);
 	}
-
+/*
+	printf("internediate state variables:\n");
+			for(int i = 0; i < 8; i++)
+				printf("%u ", state[i]);
+			printf("\n");
+*/
 	// Append to the padding the total message's length in bits and transform.
 	bitlen += datalen * 8;
 	data[63] = bitlen;
@@ -155,8 +178,14 @@ void sha256_hw_final(unsigned int datalen, unsigned int state[8], const BYTE dat
 	data[58] = bitlen >> 40;
 	data[57] = bitlen >> 48;
 	data[56] = bitlen >> 56;
-	sha256_transform(data, state);
+	sha256_hw_transform(data, state);
+/*
+	printf("final state variables:\n");
+		for(int i = 0; i < 8; i++)
+			printf("%u ", state[i]);
+		printf("\n");
 
+*/
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
 	for (i = 0; i < 4; ++i) {
@@ -169,5 +198,11 @@ void sha256_hw_final(unsigned int datalen, unsigned int state[8], const BYTE dat
 		hash[i + 24] = (state[6] >> (24 - i * 8)) & 0x000000ff;
 		hash[i + 28] = (state[7] >> (24 - i * 8)) & 0x000000ff;
 	}
+/*
+	printf("hash values: \n");
+	for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
+		printf("%x ", hash[i]);
+	printf("\n");
+	*/
 }
 #endif

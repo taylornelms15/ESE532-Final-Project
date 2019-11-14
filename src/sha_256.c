@@ -33,6 +33,7 @@ void sha256_transform(SHA256_CTX *ctx, const BYTE data[])
 {
 	WORD_SHA a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
+
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	for ( ; i < 64; ++i)
@@ -97,12 +98,20 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 			ctx->datalen = 0;
 		}
 	}
+
+	//printf("data: %s\n", data);
+
 }
 
 void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 {
 	WORD_SHA i;
-
+/*
+	printf("state variables:\n");
+	for(int i = 0; i < 8; i++)
+		printf("%u ", ctx->state[i]);
+	printf("\n");
+*/
 	i = ctx->datalen;
 
 	// Pad whatever data is left in the buffer.
@@ -112,6 +121,7 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 			ctx->data[i++] = 0x00;
 	}
 	else {
+		//printf("len greater then 56\n");
 		ctx->data[i++] = 0x80;
 		while (i < 64)
 			ctx->data[i++] = 0x00;
@@ -119,6 +129,12 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 		memset(ctx->data, 0, 56);
 	}
 
+	/*
+	printf("intermediate state variables:\n");
+			for(int i = 0; i < 8; i++)
+				printf("%u ", ctx->state[i]);
+			printf("\n");
+*/
 	// Append to the padding the total message's length in bits and transform.
 	ctx->bitlen += ctx->datalen * 8;
 	ctx->data[63] = ctx->bitlen;
@@ -130,7 +146,12 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 	ctx->data[57] = ctx->bitlen >> 48;
 	ctx->data[56] = ctx->bitlen >> 56;
 	sha256_transform(ctx, ctx->data);
-
+/*
+	printf("final state variables:\n");
+		for(int i = 0; i < 8; i++)
+			printf("%u ", ctx->state[i]);
+		printf("\n");
+*/
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
 	for (i = 0; i < 4; ++i) {
@@ -143,4 +164,10 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 		hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
 		hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
 	}
+/*
+	printf("hash values: \n");
+		for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
+			printf("%x ", hash[i]);
+		printf("\n");
+*/
 }
