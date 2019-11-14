@@ -1,8 +1,10 @@
 #if 1
+#include <hls_stream.h>
 #include <stdlib.h>
 #include<string.h>
 #include<stdio.h>
 #include "sha_256.h"
+#include "common.h"
 
 /** Reference : https://github.com/B-Con/crypto-algorithms */
 
@@ -97,10 +99,11 @@ void sha256_hw_transform(const BYTE data[], WORD_SHA state[])
 #pragma SDS data access_pattern(data:SEQUENTIAL, hash:SEQUENTIAL)
 #pragma SDS data copy(data[0:len])
 /** Top-level function */
-void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE])
+void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
+
+	unsigned int state[8];
 #pragma HLS array_partition variable=state
-	WORD_SHA state[8];
 
 	state[0] = 0x6a09e667;
 	state[1] = 0xbb67ae85;
@@ -111,7 +114,8 @@ void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE
 	state[6] = 0x1f83d9ab;
 	state[7] = 0x5be0cd19;
 
-	BYTE subchunk[64];
+	hls::stream<BYTE> subchunk;
+	//BYTE subchunk[64];
 
 	unsigned int datalen = 0, total_len = 0;
 	unsigned long long bitlen = 0;
@@ -119,7 +123,8 @@ void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE
 	main_loop:for (unsigned int i = 0; i < len; ++i)
 	{
 #pragma HLS pipeline
-		subchunk[datalen] = data[i];
+		//subchunk[datalen] = data[i];
+		subchunk.write(data[i]);
 		datalen++;
 		if (datalen == 64)
 		{
@@ -142,7 +147,7 @@ void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE
 	sha256_hw_final(datalen, state, subchunk, bitlen, hash);
 }
 
-void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[], unsigned long long bitlen, BYTE hash[])
+void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], unsigned long long bitlen, BYTE hash[])
 {
 	WORD_SHA i;
 
@@ -150,13 +155,16 @@ void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[], unsig
 
 	// Pad whatever data is left in the buffer.
 	if (datalen < 56) {
-		data[i++] = 0x80;
+		//data[i++] = 0x80;
+		data.write(0x80);
 		while (i < 56)
-			data[i++] = 0x00;
+			data.write(0x00);
+			//data[i++] = 0x00;
 	}
 	else {
 		//printf("len greater then 56\n");
-		data[i++] = 0x80;
+		//data[i++] = 0x80;
+		data.write(0x00);
 		while (i < 64)
 			data[i++] = 0x00;
 		sha256_hw_transform(data, state);
