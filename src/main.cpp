@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 extern "C"{
 #include "rabin.h"
 #include "sha_256.h"
+#include "sha256_hw.h"
 #include "lzw_sw.h"
 #include "chunkdict.h"
 }
@@ -16,6 +18,8 @@ extern "C"{
 #endif
 
 #define USING_LZW_HW
+#define USING_SHA_HW
+#define SHA_TEST
 
 #include "common.h"
 
@@ -94,9 +98,41 @@ int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElement
 	//printf("Two arrays equal!!!!!!!!!!\n");
 	return 0;
 }
+bool compare(BYTE* data1, BYTE* data2)
+{
+	for (int i = 0; i < SHA256_BLOCK_SIZE; i++)
+	{
+		if (data1[i] != data2[i])
+			return false;
+	}
+
+	return true;
+}
 
 int main(int argc, char *argv[]) {
 
+#ifdef SHA_TEST
+	SHA256_CTX ctx;
+	sha256_init(&ctx);
+	const BYTE buf[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"};
+	unsigned int chunks = 0;
+	BYTE sha_buf[SHA256_BLOCK_SIZE];
+	BYTE sha_buf_hw[SHA256_BLOCK_SIZE];
+
+	//sha256_hw_compute(buf, strlen(buf), sha_buf);
+
+	sha256_init(&ctx);
+	//sha256_update(&ctx, buf, strlen(buf));
+	sha256_final(&ctx, sha_buf);
+
+	bool res = compare(sha_buf, sha_buf_hw);
+
+	if (res)
+		printf("outputs matched\n");
+	else
+		printf("outputs didn't match\n");
+
+#else
 	struct rabin_t *hash;
     hash = rabin_init();
     SHA256_CTX ctx;
@@ -143,11 +179,13 @@ int main(int argc, char *argv[]) {
 
             len -= remaining;
             ptr += remaining;
-
+#ifdef USING_SHA_HW
+            sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf);
+#else
             sha256_init(&ctx);
             sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
             sha256_final(&ctx, sha_buf);
-
+#endif
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
 #ifdef USING_LZW_HW
@@ -184,9 +222,13 @@ int main(int argc, char *argv[]) {
     if (rabin_finalize(hash) != NULL) {
         chunks++;
 
+#ifdef USING_SHA_HW
+        sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf);
+#else
         sha256_init(&ctx);
         sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length);
         sha256_final(&ctx, sha_buf);
+#endif
 
 
         int shaIndex = indexForShaVal(sha_buf);
@@ -230,6 +272,8 @@ int main(int argc, char *argv[]) {
     if (chunks > 0)
         avg = bytes / chunks;
     printf("%d chunks, average chunk size %d\n", chunks, avg);
+
+#endif // SHA_TEST
 
     return 0;
 }
