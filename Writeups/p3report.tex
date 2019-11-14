@@ -1,0 +1,64 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{appendix}
+\usepackage{graphicx}
+
+
+\title{ESE532 Project P3 Report - Group}
+\author{Ritika Gupta, Taylor Nelms, and Nishanth Shyamkumar}
+
+\begin{document}
+
+\maketitle
+
+
+\section{I/O}
+
+TODO: put throughput here
+
+\section{FPGA Acceleration}
+
+\subsection{Rabin}
+
+\subsection{SHA}
+
+\subsection{Deduplication}
+
+We have not yet moved this step onto the FPGA.
+
+\subsection{LZW Compression}
+
+We were able to put the LZW compression algorithm entirely onto the FPGA. For development, this involved making a wrapper function in hardware that took in a buffer filled with the chunk to compress, fed that into a stream (to simulate what would come out of the other hardware components), read from that stream to compress the contents, and fed that output stream into a different buffer to return back to the CPU. (The connections between them were acheived via the \texttt{dataflow} pragma.)
+\newline\newline
+Validation was achieved against the working CPU version of the code we completed previously. There was significant tuning involved, given the memory limitations of the FPGA; after all, there is not enough onboard BRAM space to hold $2^{21}$ 13-bit data entries. Instead, we implemented a hash table internally that hashed the addresses of our conceptual LZW-table (21-bit values) into 10-bit values with some slight degree of uniformity (more on that in a second). We elected (arbitrarily) to use $1024$ hash table rows, and allow for $24$ of the $34$-bit key-value pairs to be stored in each row. This allowed for each "hash bucket" to store up to three times what its "fair" share would be. 
+\newline\newline
+This hash memory was distributed to enough BRAM's to allow for all the values in a hash row to be read in one operation. For lookups, a key is then checked against each key-value pair to find the corresponding value. This approach allowed for a functional table implementaton with just $52$ BRAM units dedicated to the LZW process (so far).
+\newline\newline
+Notably, hash collisions past our planned depth may occur;  as such, we plan to look into implementing a small associative memory to handle these outliers, and see if there is some good tuning that we can do to waste as little memory as possible.
+\newline\newline
+The hash function was developed highly arbitrarily, but from empirical methods. We logged the software-produced LZW key-value pairs offline, and then took those 21-bit key values and attempted to develop a function that would distribute them among 1024 hash buckets reasonably evenly. In the end, the implementation is a combination of a lot of \texttt{XOR} operations, with one additional lookup in the Rijndael substitution box, in various mixing of key bits arranged to, hopefully, distribute the higher-entropy bits of the input across the bits of the output. Upon testing this approach with both a text and binary data source, we found that no hash bucket was seeing more than a factor-of-three load more than a completely even share. While this could probably be refined further to be more efficient, the relative efficiency of the current approach is remarkable in its own right.
+\newline\newline
+In terms of clearing the table after each iteration, we are using an array of "valid bits" to keep track of the "validity" of each entry in the hash table; in this fashion, the process of clearing the data should involve significantly fewer operations than trying to set the entirety of the hash table memory.
+\newline\newline
+The primary loop of our hardware function was able to be pipelined down to an \texttt{II} of $6$; if we were to cut down on the maximum chunk size, we're optimistic that we could reduce that further if need be.
+
+
+\begin{appendices}
+%\section{2m Filter.cpp}\label{2m}
+%\lstinputlisting[language=C]{code/Filter.cpp}
+%\section{1h mmult\_accel.cpp}\label{1hB}
+%\lstinputlisting[language=C]{code/mmult_accel.cpp}
+%\section{1h mmult\_accel.h}\label{1hC}
+%\lstinputlisting[language=C]{code/mmult_accel.h}
+
+
+\end{appendices}
+
+
+
+
+
+\end{document}

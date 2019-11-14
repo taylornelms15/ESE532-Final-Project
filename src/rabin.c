@@ -12,8 +12,8 @@
 struct chunk_t last_chunk;
 
 static bool tables_initialized = false;
-static uint64_t mod_table[256];
-static uint64_t out_table[256];
+uint64_t mod_table[256];
+uint64_t out_table[256];
 
 static int deg(uint64_t p) {
     uint64_t mask = 0x8000000000000000LL;
@@ -122,8 +122,8 @@ void rabin_reset(struct rabin_t *h) {
 
 
 #pragma SDS data access_pattern(buf:SEQUENTIAL, chunk:SEQUENTIAL)
-#pragma SDS data copy(buf[0:len], chunk[0:MAXSIZE])
-int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned int len) {
+#pragma SDS data copy(buf[0:len], chunk[0:MAXSIZE], out_table[0:256], mod_table[0:256])
+int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], uint64_t out_table[256], uint64_t mod_table[256], unsigned int len) {
 	unsigned int count = h->count;
     unsigned int pos = h->pos;
     uint64_t digest = h->digest;
@@ -165,6 +165,7 @@ int rabin_next_chunk(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXS
 #pragma HLS ARRAY_PARTITION variable=h->window dim=0 complete
             for (int i = 0; i < WINSIZE; i++)
                     h->window[i] = 0;
+
                 h->digest = 0;
                 h->wpos = 0;
                 h->count = 0;

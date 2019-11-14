@@ -4,6 +4,15 @@
 #include "lzw_sw.h"
 #include <string.h>
 
+#define NONEFOUND 0xFFFF
+
+/// Record of whether we are writing what our hashed chunk values are (for exploration of hash functions offline)
+//#define WRITING_HASHVALUES
+
+#ifdef WRITING_HASHVALUES
+static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin_hashrecord.txt";
+#endif
+
 //in implementation, may be able to trim to smaller data type
 static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
 
@@ -63,6 +72,16 @@ int xferBufferToOutput(const uint16_t* buffer, uint8_t* output, int numElements)
 
 }//xferBufferToOutput
 
+#ifdef WRITING_HASHVALUES
+
+void writeRecordOut(uint16_t curTableRow, uint8_t curChar, uint16_t value, FILE* fp){
+
+	uint32_t key = ((uint32_t)(curTableRow) << 8) | ((uint32_t) curChar);
+	fprintf(fp, "%06x %04x\n", key, value);
+}
+
+#endif
+
 /**
 Compresses numElements bytes from the array marked "input", outputs them into "output"
 Returns the number of output bytes
@@ -70,6 +89,10 @@ Returns the number of output bytes
 int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
     uint16_t outBuffer[MAXCHUNKLENGTH];
     memset((void*) table, 0xFF, MAXCHUNKLENGTH * MAXCHARVAL * sizeof(uint16_t));//just set to all ones
+#ifdef WRITING_HASHVALUES
+    FILE* fp = fopen(outfileName, "a");
+#endif
+
 
 	///index of the input element we're reading
 	int iidx = 0;
@@ -90,7 +113,11 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
 		}
 		else {
 			outBuffer[oidx++] = curTableRow;
-			table[curTableRow][curChar] = oidx + MAXCHARVAL - 1;
+			uint16_t valToWrite = oidx + MAXCHARVAL - 1;
+			table[curTableRow][curChar] = valToWrite;
+#ifdef WRITING_HASHVALUES
+			writeRecordOut(curTableRow, curChar, valToWrite, fp);
+#endif
 			curTableRow = curChar;//reset back to initial block
 			if (iidx == numElements){//fixes a "missing last code" problem
 				outBuffer[oidx++] = curTableRow;
@@ -103,6 +130,10 @@ int lzwCompress(const uint8_t* input, int numElements, uint8_t* output) {
     //printf("oidx: %d\n", oidx);
     int bytesOutput = xferBufferToOutput(outBuffer, output, oidx);
     //printf("Ending bytes: %d\n", bytesOutput);
+
+#ifdef WRITING_HASHVALUES
+    fclose(fp);
+#endif
 	return bytesOutput;
 	
 
