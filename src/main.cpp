@@ -4,14 +4,18 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-extern "C"{
+
+extern "C"
+{
 #include "rabin.h"
 #include "sha_256.h"
-#include "sha256_hw.h"
+//
 #include "lzw_sw.h"
 #include "chunkdict.h"
 }
-#include "lzw_hw.h"
+#include "sha256_hw.h"
+
+//#include "lzw_hw.h"
 #ifdef __SDSCC__
 #include <ff.h>
 #include <sds_lib.h>
@@ -98,7 +102,7 @@ int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElement
 	//printf("Two arrays equal!!!!!!!!!!\n");
 	return 0;
 }
-bool compare(BYTE* data1, BYTE* data2)
+bool compare(BYTE data1[SHA256_BLOCK_SIZE], BYTE data2[SHA256_BLOCK_SIZE])
 {
 	for (int i = 0; i < SHA256_BLOCK_SIZE; i++)
 	{
@@ -113,16 +117,15 @@ int main(int argc, char *argv[]) {
 
 #ifdef SHA_TEST
 	SHA256_CTX ctx;
-	sha256_init(&ctx);
-	const BYTE buf[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"};
+	const BYTE buf[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopqabcdefghijhdsahd 63244e3demdbdbdcds cksjdhbr4reiwurfdnscmdncuiyu543nmnd kjsdnl;klsfd"};
 	unsigned int chunks = 0;
 	BYTE sha_buf[SHA256_BLOCK_SIZE];
 	BYTE sha_buf_hw[SHA256_BLOCK_SIZE];
 
-	//sha256_hw_compute(buf, strlen(buf), sha_buf);
+	sha256_hw_compute(buf, strlen((const char*)buf), sha_buf_hw);
 
 	sha256_init(&ctx);
-	//sha256_update(&ctx, buf, strlen(buf));
+	sha256_update(&ctx, buf, strlen((const char*)buf));
 	sha256_final(&ctx, sha_buf);
 
 	bool res = compare(sha_buf, sha_buf_hw);

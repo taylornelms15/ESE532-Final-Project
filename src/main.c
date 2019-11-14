@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 #ifdef SHA_TEST
 	SHA256_CTX ctx;
 	sha256_init(&ctx);
-	const BYTE buf[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopqabcdefghij"};
+	const BYTE buf[] = {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopqabcdefghijhdsahd 63244e3demdbdbdcds cksjdhbr4reiwurfdnscmdncuiyu543nmnd kjsdnl;klsfd"};
 	unsigned int chunks = 0;
 	BYTE sha_buf[SHA256_BLOCK_SIZE];
 	BYTE sha_buf_hw[SHA256_BLOCK_SIZE];
