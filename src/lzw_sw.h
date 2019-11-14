@@ -11,7 +11,7 @@
 
 #define MAXCHUNKLENGTH (MAXSIZE)
 #define MAXCHARVAL 256
-#define NONEFOUND 0xFFFF
+
 
 
 
