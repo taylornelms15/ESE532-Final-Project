@@ -17,11 +17,11 @@
 
 \section{I/O}
 
-We were unable to get a working integration of I/O functionality together within the alotted time. Cryptic errors and long build times exacerbated the problem. As such, we have no idea what the current throughput we are achieving is.
+We were unable to fully get a working integration of I/O functionality together within the alotted time. Cryptic errors and long build times exacerbated the problem. As such, we have no idea what the current throughput we are achieving is. That said, large portions of our code \textbf{are} coming together, so that's encouraging.
 
 \section{FPGA Acceleration}
 
-We were unable to get a working build containing our FPGA implementation onto the hardware.
+We were able to accelerate some functions, but unable to sensibly measure throughput in time. Further development should fix this.
 
 \subsection{Rabin}
 
@@ -35,7 +35,7 @@ We have not yet moved this step onto the FPGA.
 
 We have not yet moved this step onto the FPGA. Our current development version plans to hash the SHA fingerprint to a smaller number of bits (we're currently looking at 16), and divide a portion of DRAM into "buckets" for it to use. For all of the roughly $2^{17}$ potential "rows" that pair a SHA256 digest with an "output chunk" index, the hashed digest will point to some section of them. We're currently leaning towards a potential hash depth of $2$ (allowing for a factor-of-two hash overflow), which would point to needing to look at four potential digest-index pairs for a digest match.
 \newline\newline
-In this way, for each digest that comes in, we will need to pull $144$ bytes from DRAM to check against our incoming digest. Ideally, this kind of shared memory load is feasible to enact in a reasonable amount of time; once our implementation becomes sensibly integrated, we will know better.
+In this way, for each digest that comes in, we will need to pull $144$ bytes from DRAM to check against our incoming digest. Ideally, this kind of shared memory load is feasible to enact in a reasonable amount of time; once our implementation becomes sensibly integrated, we will know bette
 
 \subsection{LZW Compression}
 
