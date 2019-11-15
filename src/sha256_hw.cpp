@@ -20,8 +20,8 @@
 #define SIG0(x) (ROTRIGHT(x,7) ^ ROTRIGHT(x,18) ^ ((x) >> 3))
 #define SIG1(x) (ROTRIGHT(x,17) ^ ROTRIGHT(x,19) ^ ((x) >> 10))
 
-void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], hls::stream<BYTE> &  data, unsigned long long bitlen, BYTE hash[]);
-
+//void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], hls::stream<BYTE> &  data, unsigned long long bitlen, BYTE hash[]);
+void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], unsigned long long bitlen, BYTE hash[]);
 
 
 /**
@@ -41,7 +41,8 @@ void sha256_hw_init()
 */
 /*********************** FUNCTION DEFINITIONS *********************** */
 
-void sha256_hw_transform(hls::stream<unsigned char> &  data, WORD_SHA state[])
+//void sha256_hw_transform(hls::stream<unsigned char> &  data, WORD_SHA state[])
+void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 {
 	static const WORD_SHA k[64] = {
 				0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -53,16 +54,22 @@ void sha256_hw_transform(hls::stream<unsigned char> &  data, WORD_SHA state[])
 				0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
 				0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 			};
+#pragma HLS array_partition variable=k
 
 	WORD_SHA a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
-		//m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
-		m[i] = (data.read() << 24) | (data.read() << 16) | (data.read() << 8) | (data.read());
+	{
+#pragma HLS unroll
+		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
+	}
 
 	for ( ; i < 64; ++i)
+	{
+#pragma HLS unroll factor=2
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
+	}
 
 	a = state[0];
 	b = state[1];
@@ -75,6 +82,7 @@ void sha256_hw_transform(hls::stream<unsigned char> &  data, WORD_SHA state[])
 
 	for (i = 0; i < 64; ++i)
 	{
+#pragma HLS pipeline
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;
@@ -98,6 +106,7 @@ void sha256_hw_transform(hls::stream<unsigned char> &  data, WORD_SHA state[])
 	state[7] += h;
 }
 
+#if 0
 #pragma SDS data access_pattern(data:SEQUENTIAL)
 void sha256_hw_transform_last_chunk(unsigned char data[64], WORD_SHA state[])
 {
@@ -154,13 +163,14 @@ void sha256_hw_transform_last_chunk(unsigned char data[64], WORD_SHA state[])
 	state[6] += g;
 	state[7] += h;
 }
+#endif
 
 #pragma SDS data access_pattern(data:SEQUENTIAL, hash:SEQUENTIAL)
 #pragma SDS data copy(data[0:len])
 /** Top-level function */
 void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
-	unsigned int state[8];
+	WORD_SHA state[8];
 #pragma HLS array_partition variable=state
 
 	state[0] = 0x6a09e667;
@@ -173,15 +183,18 @@ void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BL
 	state[7] = 0x5be0cd19;
 
 //#pragma HLS DATAFLOW
-	hls::stream<BYTE> subchunk;
+	//hls::stream<BYTE> subchunk;
+	BYTE subchunk[64];
+//#pragma HLS stream depth=8 variable=subchunk
 
-	unsigned int datalen = 0, total_len = 0;
+	unsigned int datalen = 0;
 	unsigned long long bitlen = 0;
 
 	main_loop:for (unsigned int i = 0; i < len; ++i)
 	{
 #pragma HLS pipeline
-		subchunk.write(data[i]);
+		//subchunk.write(data[i]);
+		subchunk[datalen] = data[i];
 		datalen++;
 		if (datalen == 64)
 		{
@@ -189,8 +202,6 @@ void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BL
 			bitlen += 512;
 			datalen = 0;
 		}
-
-		total_len++;
 	}
 /*
 	printf("state variables:\n");
@@ -198,6 +209,9 @@ void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BL
 		printf("%u ", state[i]);
 	printf("\n");
 */
+	sha256_hw_final(datalen, state, subchunk, bitlen, hash);
+
+#if 0
 	/** Compute the SHA for final few chunks */
 	BYTE last_chunk[64] = {0};
 	WORD_SHA i = datalen;
@@ -249,11 +263,11 @@ void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BL
 			printf("%x ", hash[i]);
 		printf("\n");
 */
+#endif
 }
 
 void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], unsigned long long bitlen, BYTE hash[])
 {
-	/*
 	WORD_SHA i;
 
 	i = datalen;
@@ -270,7 +284,8 @@ void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], uns
 		while (i < 64)
 			data[i++] = 0x00;
 		sha256_hw_transform(data, state);
-		memset(data, 0, 56);
+		// TODO: need to memset
+		//memset(data, 0, 56);
 	}
 
 	printf("internediate state variables:\n");
@@ -313,6 +328,6 @@ void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], uns
 	for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
 		printf("%x ", hash[i]);
 	printf("\n");
-	*/
+
 }
 
