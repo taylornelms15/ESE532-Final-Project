@@ -8,14 +8,13 @@ extern "C"{
 #include "sha_256.h"
 #include "lzw_sw.h"
 #include "chunkdict.h"
+#include <string.h>
 }
 #include "lzw_hw.h"
 #ifdef __SDSCC__
-#include <ff.h>
 #include <sds_lib.h>
 #endif
 
-//#define USING_LZW_HW
 
 #ifdef __SDSCC__
 #define MEASURING_LATENCY 1
@@ -37,7 +36,7 @@ size_t bytes;
 extern uint64_t mod_table[256];
 extern uint64_t out_table[256];
 static const char infileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/ESE532.tar";
-static const char outfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/ESE532.dat";
+static const char outfileName[] = "/compress.dat";
 static const char linuxInfileName[] = "linux.tar";
 static const char linuxOutfileName[] = "linux.dat";
 
@@ -81,6 +80,10 @@ void Free(uint8_t* Frame){
 
 
 
+//Commenting out Load_data since Linux implementation uses read from server.
+#if READING_FROM_SERVER
+
+#else
 
 unsigned int Load_data(unsigned char * Data)
 {
@@ -115,6 +118,7 @@ unsigned int Load_data(unsigned char * Data)
 #endif
   return Bytes_read;
 }
+#endif
 
 int compareArrays(const uint8_t* cand, const uint8_t* gold, const int numElements){
 	int numMistakes = 0;
@@ -156,7 +160,8 @@ int main(int argc, char *argv[]) {
 
     printf("Starting main function\n");
 
-    buf = Allocate(MAXINPUTFILESIZE * sizeof(uint8_t));
+    //Forcefully using malloc, since sds_alloc cannot allocate 256MB of contiguous memory
+    buf = (uint8_t *)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
     printf("buf allocated at %x\n", buf);
 
 
@@ -167,11 +172,12 @@ int main(int argc, char *argv[]) {
     unsigned long long timeInLZW            = 0;//how many cycles we spent in LZW
 #endif
 
+//Doing a single read till end of packets to reduce complexity as of now.
 #if READING_FROM_SERVER
     //Fill buffer from server
     uint32_t currentIndex = 0;
-    uint8_t serv_rd_stp = 0;
-    while(!serv_rd_stp && currentIndex <= MAXSIZE || currentIndex <= MAXINPUTFILESIZE) {
+    uint8_t server_rd_stp = 0;
+    while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
         uint8_t pkt[MAXPKTSIZE+HEADER];
         uint16_t thisPacketBytes = Server.get_packet(pkt);
         if (thisPacketBytes < 0){
@@ -181,13 +187,16 @@ int main(int argc, char *argv[]) {
 
         if((pkt[1] & 0x80) == 128) 
           server_rd_stp = 1;
-        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) | 0x7fff) ;  
-        memcpy(buf + currIndex, pkt, thisPacketBytes);
+        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) & 0x7fff) ;
+        printf("pkt[0] : %x\n", pkt[0]);
+		printf("pkt[1] : %x\n", pkt[1]);
+        printf("pkt len: %d\n", thisPacketBytes);
+        memcpy(buf + currentIndex, &pkt[HEADER], thisPacketBytes);
         currentIndex += thisPacketBytes;
         bytes += thisPacketBytes;
         
     }//while
-    unsigned int len = currentIndex + 1;
+    unsigned int len = currentIndex;
 
 #else
     //read data from file system
@@ -204,35 +213,43 @@ int main(int argc, char *argv[]) {
 #endif//not reading from server
 
     //Set up output file
-#ifdef __SDSCC__
-    FIL File;
-    unsigned int bytes_written;
 
-    FRESULT Result = f_open(&File, linuxOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
-    Check_error(Result != FR_OK, "Could not open output file.");
-
-#else
-    FILE* File = fopen(outfileName, "wb");
+#if READING_FROM_SERVER
+ 	FILE* File = fopen(outfileName, "wb");
     if (File == NULL)
         Exit_with_error();
+#else
+	#ifdef __SDSCC__
+    	FIL File;
+    	unsigned int bytes_written;
+
+    	FRESULT Result = f_open(&File, linuxOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
+    	Check_error(Result != FR_OK, "Could not open output file.");
+	#else
+    	FILE* File = fopen(outfileName, "wb");
+        if (File == NULL)
+            Exit_with_error();
+	#endif
+
 
 #endif
+
 
     //actually run our program
 
     uint8_t *ptr = buf;
     uint8_t chunk[MAXSIZE];
-    bytes += len;
+   // bytes += len;
     int remaining;
-
+    //   printf("len: %d\n", len);
         while (len > 0) {
 
         	if(len >= MAXSIZE)
         		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
         	else
         		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, len);
-        		printf("remaining: %d\n", remaining);
-        		printf("Chunk_length: %d\n", last_chunk.length);
+        	//	printf("remaining: %d\n", remaining);
+
 
             if (remaining < 0) {
                 break;
@@ -240,6 +257,7 @@ int main(int argc, char *argv[]) {
 
             len -= remaining;
             ptr += remaining;
+
 
             sha256_init(&ctx);
             sha256_update(&ctx, &chunk[0], remaining);
@@ -274,29 +292,29 @@ int main(int argc, char *argv[]) {
                 //compareArrays(compress2, compress, compress_size);
 
 
-#ifdef __SDSCC__
+/*#ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_written);
-#else
+#else*/
                 fwrite(compress, sizeof(uint8_t), compress_size, File);
 
-#endif
+//#endif
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-#ifdef __SDSCC__
+/*#ifdef __SDSCC__
                 f_write(&File, &dupPacket, 4, &bytes_written);
-#else
+#else*/
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
-#endif
+//#endif
 
             }//if found in table
 
             chunks++;
-
+//Code below is for processing+reading from NW implementation
 #if READING_FROM_SERVER
-            if(!server_rd_stp) {
+        /*    if(!server_rd_stp) {
               uint8_t pkt[MAXPKTSIZE+HEADER];
               uint16_t thisPacketBytes = Server.get_packet(pkt);
               if (thisPacketBytes < 0){
@@ -304,14 +322,19 @@ int main(int argc, char *argv[]) {
               }//end of transmission
               if((pkt[1] & 0x80) == 128) 
                 server_rd_stp = 1;
-              thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) | 0x7fff) ;  
-              memcpy(buf + currIndex, pkt, thisPacketBytes);
+              thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) & 0x7fff) ;
+              printf("pkt[0] : %x\n", pkt[0]);
+              printf("pkt[1] : %x\n", pkt[1]);
+              printf("pkt len: %d\n", thisPacketBytes);
+              memcpy(buf + currentIndex, &pkt[HEADER], thisPacketBytes);
               currentIndex += thisPacketBytes;
               bytes += thisPacketBytes;
               len += thisPacketBytes;
-#endif
-            }
 
+
+            }
+            */
+#endif
         }//while(true)
 
     if (rabin_finalize(hash) != NULL) {
@@ -336,31 +359,31 @@ int main(int argc, char *argv[]) {
 
 
 
-#ifdef __SDSCC__
+/*#ifdef __SDSCC__
             f_write(&File, compress, compress_size, &bytes_written);
-#else
+#else*/
             fwrite(compress, sizeof(uint8_t), compress_size, File);
             printf("Compress fhash size: %d\n", compress_size);
-#endif
+//#endif
         }//if not found in table
         else{
             uint32_t dupPacket = shaIndex;
             dupPacket <<= 1;
             dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-#ifdef __SDSCC__
+/*#ifdef __SDSCC__
             f_write(&File, &dupPacket, 4, &bytes_written);
-#else
+#else*/
             fwrite(&dupPacket, sizeof(uint32_t), 1, File);
-#endif
+//#endif
 
         }//if found in table
     }
 
-#ifdef __SDSCC__
+/*#ifdef __SDSCC__
     f_close(&File);
-#else
+#else*/
     fclose(File);
-#endif
+//#endif
     Free(buf);
     Free(compress);
 
@@ -371,3 +394,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+

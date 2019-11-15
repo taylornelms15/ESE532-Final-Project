@@ -12,15 +12,18 @@
 #define MINSIZE (1 * 1024)
 #define MAXSIZE (8 * 1024)
 
-#define MAXINPUTFILESIZE (1 << 19)//512KB
+#define MAXINPUTFILESIZE (1 << 28)//256MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
 
-
+#ifdef HWIMPL
+	#define USING_LZW_HW
+#endif
 
 
 
 
 #endif
+
