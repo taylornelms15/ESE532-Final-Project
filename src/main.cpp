@@ -170,19 +170,28 @@ int main(int argc, char *argv[]) {
 #if READING_FROM_SERVER
     //Fill buffer from server
     uint32_t currentIndex = 0;
-    while(currentIndex < MAXINPUTFILESIZE){
-        int thisPacketBytes = Server.get_packet(buf + currentIndex);
+    uint8_t serv_rd_stp = 0;
+    while(!serv_rd_stp && currentIndex <= MAXSIZE || currentIndex <= MAXINPUTFILESIZE) {
+        uint8_t pkt[MAXPKTSIZE+HEADER];
+        int thisPacketBytes = Server.get_packet(pkt);
         if (thisPacketBytes < 0){
             printf("Read %d total bytes from network\n", currentIndex + 1);
             break;
         }//end of transmission
+
+        if(pkt[15] == 1) 
+          server_rd_stp = 1;
+        thisPacketBytes = pkt | 0x8000 ;  
+        memcpy(buf + currIndex, pkt, thisPacketBytes);
         currentIndex += thisPacketBytes;
+        bytes += thisPacketBytes;
         
     }//while
     unsigned int len = currentIndex + 1;
 
 #else
     //read data from file system
+    unsigned int len = Load_data(buf);
 
 #ifdef __SDSCC__
     FATFS FS;
@@ -190,7 +199,6 @@ int main(int argc, char *argv[]) {
     Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
 #endif
 
-    unsigned int len = Load_data(buf);
 
 
 #endif//not reading from server
@@ -219,8 +227,8 @@ int main(int argc, char *argv[]) {
 
         while (len > 0) {
 
-        	if(len > MAXSIZE)
-        		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, len);
+        	if(len >= MAXSIZE)
+        		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
         	else
         		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, len);
         		printf("remaining: %d\n", remaining);
@@ -286,6 +294,24 @@ int main(int argc, char *argv[]) {
             }//if found in table
 
             chunks++;
+
+#if READING_FROM_SERVER
+            if(!server_rd_stp) {
+              uint8_t pkt[MAXPKTSIZE+HEADER];
+              thisPacketBytes = Server.get_packet(pkt);
+              if (thisPacketBytes < 0){
+                Exit_with_error();
+              }//end of transmission
+              if(pkt[15] == 1) 
+                server_rd_stp = 1;
+              thisPacketBytes = pkt | 0x8000 ;  
+              memcpy(buf + currIndex, pkt, thisPacketBytes);
+              currentIndex += thisPacketBytes;
+              bytes += thisPacketBytes;
+              len += thisPacketBytes;
+#endif
+            }
+
         }//while(true)
 
     if (rabin_finalize(hash) != NULL) {
