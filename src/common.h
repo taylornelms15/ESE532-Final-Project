@@ -15,7 +15,8 @@
 #define MAXINPUTFILESIZE (1 << 19)//512KB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
-
+#define MAXPKTSIZE 4096
+#define HEADER 2
 
 
 

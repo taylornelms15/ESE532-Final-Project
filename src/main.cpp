@@ -173,15 +173,15 @@ int main(int argc, char *argv[]) {
     uint8_t serv_rd_stp = 0;
     while(!serv_rd_stp && currentIndex <= MAXSIZE || currentIndex <= MAXINPUTFILESIZE) {
         uint8_t pkt[MAXPKTSIZE+HEADER];
-        int thisPacketBytes = Server.get_packet(pkt);
+        uint16_t thisPacketBytes = Server.get_packet(pkt);
         if (thisPacketBytes < 0){
             printf("Read %d total bytes from network\n", currentIndex + 1);
             break;
         }//end of transmission
 
-        if(pkt[15] == 1) 
+        if((pkt[1] & 0x80) == 128) 
           server_rd_stp = 1;
-        thisPacketBytes = pkt | 0x8000 ;  
+        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) | 0x7fff) ;  
         memcpy(buf + currIndex, pkt, thisPacketBytes);
         currentIndex += thisPacketBytes;
         bytes += thisPacketBytes;
@@ -298,13 +298,13 @@ int main(int argc, char *argv[]) {
 #if READING_FROM_SERVER
             if(!server_rd_stp) {
               uint8_t pkt[MAXPKTSIZE+HEADER];
-              thisPacketBytes = Server.get_packet(pkt);
+              uint16_t thisPacketBytes = Server.get_packet(pkt);
               if (thisPacketBytes < 0){
                 Exit_with_error();
               }//end of transmission
-              if(pkt[15] == 1) 
+              if((pkt[1] & 0x80) == 128) 
                 server_rd_stp = 1;
-              thisPacketBytes = pkt | 0x8000 ;  
+              thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) | 0x7fff) ;  
               memcpy(buf + currIndex, pkt, thisPacketBytes);
               currentIndex += thisPacketBytes;
               bytes += thisPacketBytes;
