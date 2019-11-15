@@ -17,17 +17,25 @@
 
 \section{I/O}
 
-TODO: put throughput here
+We were unable to get a working integration of I/O functionality together within the alotted time. Cryptic errors and long build times exacerbated the problem. As such, we have no idea what the current throughput we are achieving is.
 
 \section{FPGA Acceleration}
 
+We were unable to get a working build containing our FPGA implementation onto the hardware.
+
 \subsection{Rabin}
+
+We attempted to put the Rabin fingerprinting onto hardware in this iteration, but ran into issues and decided to stick with a software implementation instead.
 
 \subsection{SHA}
 
+We have not yet moved this step onto the FPGA.
+
 \subsection{Deduplication}
 
-We have not yet moved this step onto the FPGA.
+We have not yet moved this step onto the FPGA. Our current development version plans to hash the SHA fingerprint to a smaller number of bits (we're currently looking at 16), and divide a portion of DRAM into "buckets" for it to use. For all of the roughly $2^{17}$ potential "rows" that pair a SHA256 digest with an "output chunk" index, the hashed digest will point to some section of them. We're currently leaning towards a potential hash depth of $2$ (allowing for a factor-of-two hash overflow), which would point to needing to look at four potential digest-index pairs for a digest match.
+\newline\newline
+In this way, for each digest that comes in, we will need to pull $144$ bytes from DRAM to check against our incoming digest. Ideally, this kind of shared memory load is feasible to enact in a reasonable amount of time; once our implementation becomes sensibly integrated, we will know better.
 
 \subsection{LZW Compression}
 
@@ -44,6 +52,14 @@ The hash function was developed highly arbitrarily, but from empirical methods. 
 In terms of clearing the table after each iteration, we are using an array of "valid bits" to keep track of the "validity" of each entry in the hash table; in this fashion, the process of clearing the data should involve significantly fewer operations than trying to set the entirety of the hash table memory.
 \newline\newline
 The primary loop of our hardware function was able to be pipelined down to an \texttt{II} of $6$; if we were to cut down on the maximum chunk size, we're optimistic that we could reduce that further if need be.
+
+\section{Code}
+
+Included in different turn-in location.
+
+\section{Binaries}
+
+Included in different turn-in location.
 
 
 \begin{appendices}
