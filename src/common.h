@@ -15,6 +15,9 @@
 #define MAXINPUTFILESIZE (1 << 28)//270MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
+//Codes for use with 9-bit streams to denote the end of the chunk and/or the end of the file
+#define ENDOFCHUNK  256
+#define ENDOFFILE   257
 
 
 
