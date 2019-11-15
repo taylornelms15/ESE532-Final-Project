@@ -18,6 +18,7 @@
 #define MAXPKTSIZE 4096
 #define HEADER 2
 
+#define HWIMPL
 #ifdef HWIMPL
 	#define USING_LZW_HW
 #endif
