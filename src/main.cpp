@@ -21,7 +21,7 @@ extern "C"
 #include <sds_lib.h>
 #endif
 
-#define USING_LZW_HW
+//#define USING_LZW_HW
 #define USING_SHA_HW
 #define SHA_TEST
 
@@ -30,8 +30,8 @@ extern "C"
 // 1MiB buffer
 uint8_t* buf;
 size_t bytes;
-static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
-static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char infileName[] = "C:/Users/rgjus/Desktop/test.txt";
+static const char outfileName[] = "C:/Users/rgjus/Desktop/output.txt";
 
 void Check_error(int Error, const char * Message)
 {
@@ -107,9 +107,13 @@ bool compare(BYTE data1[SHA256_BLOCK_SIZE], BYTE data2[SHA256_BLOCK_SIZE])
 	for (int i = 0; i < SHA256_BLOCK_SIZE; i++)
 	{
 		if (data1[i] != data2[i])
+		{
+			printf("outputs didn't match\n");
 			return false;
+		}
 	}
 
+	printf("outputs matched\n");
 	return true;
 }
 
@@ -139,9 +143,9 @@ int main(int argc, char *argv[]) {
 	struct rabin_t *hash;
     hash = rabin_init();
     SHA256_CTX ctx;
-    sha256_init(&ctx);
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
+    BYTE sha_buf_hw[SHA256_BLOCK_SIZE];
     uint8_t compress[MAXSIZE];
 
     printf("Starting main function\n");
@@ -182,13 +186,15 @@ int main(int argc, char *argv[]) {
 
             len -= remaining;
             ptr += remaining;
-#ifdef USING_SHA_HW
-            sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf);
-#else
+//#ifdef USING_SHA_HW
+            sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf_hw);
+//#else
             sha256_init(&ctx);
             sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length); 
             sha256_final(&ctx, sha_buf);
-#endif
+
+            compare(sha_buf, sha_buf_hw);
+//#endif
             int shaIndex = indexForShaVal(sha_buf);
             if(shaIndex == -1){
 #ifdef USING_LZW_HW
@@ -225,13 +231,15 @@ int main(int argc, char *argv[]) {
     if (rabin_finalize(hash) != NULL) {
         chunks++;
 
-#ifdef USING_SHA_HW
-        sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf);
-#else
+//#ifdef USING_SHA_HW
+        sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf_hw);
+//#else
         sha256_init(&ctx);
         sha256_update(&ctx, &buf[last_chunk.start], last_chunk.length);
         sha256_final(&ctx, sha_buf);
-#endif
+
+        compare(sha_buf, sha_buf_hw);
+//#endif
 
 
         int shaIndex = indexForShaVal(sha_buf);

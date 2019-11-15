@@ -160,7 +160,6 @@ void sha256_hw_transform_last_chunk(unsigned char data[64], WORD_SHA state[])
 /** Top-level function */
 void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
-
 	unsigned int state[8];
 #pragma HLS array_partition variable=state
 
