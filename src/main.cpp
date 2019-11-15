@@ -143,6 +143,8 @@ int main(int argc, char *argv[]) {
 
     buf = Allocate(MAXINPUTFILESIZE * sizeof(uint8_t));
     printf("buf allocated at %x\n", buf);
+    uint8_t* outBuf = Allocate(MAXINPUTFILESIZE);
+    uint32_t outBufOffset = 0;
 
 #if MEASURING_LATENCY
     unsigned long long numBytesUncompressed = 0;//number of bytes fed into LZW
@@ -175,6 +177,10 @@ int main(int argc, char *argv[]) {
     uint8_t *ptr = buf;
     bytes += len;
 
+#if MEASURING_LATENCY
+    unsigned long long overallStart = sds_clock_counter();
+#endif
+
         while (1) {
             int remaining = rabin_next_chunk(hash, ptr, len);
 
@@ -204,7 +210,7 @@ int main(int argc, char *argv[]) {
                     thisTimeForLZW = sds_clock_counter() - lzw_start;
                     timeInLZW += thisTimeForLZW;
                     numBytesCompressed += compress_size;
-                    printf("LZW compressed a chunk from\t[%d] to\t[%d] bytes in\t[%d] cycles\n", last_chunk.length, compress_size, thisTimeForLZW);
+                    //printf("LZW compressed a chunk from\t[%d] to\t[%d] bytes in\t[%d] cycles\n", last_chunk.length, compress_size, thisTimeForLZW);
                 #endif
                 uint32_t header = (compress_size - 4) << 1;
                 memcpy((void*)&compress[0], &header, 1 * sizeof(uint32_t));
@@ -215,7 +221,9 @@ int main(int argc, char *argv[]) {
 
                 //compareArrays(compress2, compress, compress_size);
 #ifdef __SDSCC__
-                f_write(&File, compress, compress_size, &bytes_read);
+                memcpy(outBuf + outBufOffset, compress, compress_size);
+                outBufOffset += compress_size;
+                //f_write(&File, compress, compress_size, &bytes_read);
 #else
                 fwrite(compress, sizeof(uint8_t), compress_size, File);
 #endif
@@ -225,7 +233,9 @@ int main(int argc, char *argv[]) {
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
 #ifdef __SDSCC__
-                f_write(&File, &dupPacket, 4, &bytes_read);
+                //f_write(&File, &dupPacket, 4, &bytes_read);
+                memcpy(outBuf + outBufOffset, &dupPacket, 4);
+                outBufOffset += 4;
 #else
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #endif
@@ -255,7 +265,9 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef __SDSCC__
-            f_write(&File, compress, compress_size, &bytes_read);
+            //f_write(&File, compress, compress_size, &bytes_read);
+            memcpy(outBuf + outBufOffset, compress, compress_size);
+            outBufOffset += compress_size;
 #else
             fwrite(compress, sizeof(uint8_t), compress_size, File);
 #endif
@@ -265,7 +277,9 @@ int main(int argc, char *argv[]) {
             dupPacket <<= 1;
             dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
 #ifdef __SDSCC__
-            f_write(&File, &dupPacket, 4, &bytes_read);
+            //f_write(&File, &dupPacket, 4, &bytes_read);
+            memcpy(outBuf + outBufOffset, &dupPacket, 4);
+            outBufOffset += 4;
 #else
             fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #endif
@@ -273,12 +287,24 @@ int main(int argc, char *argv[]) {
         }//if found in table
     }
 
+#if MEASURING_LATENCY
+    unsigned long long overallEnd = sds_clock_counter();
+    printf("Overall latency, start to end: [%lld] cycles\n", overallStart - overallEnd);
+#endif
+
+
+    //write output from memory to file, now that we're done measuring latency
+#ifdef __SDSCC__
+    f_write(&File, outBuf, outBufOffset + 1, &bytes_read);
+#endif
+
 #ifdef __SDSCC__
     f_close(&File);
 #else
     fclose(File);
 #endif
     Free(buf);
+    Free(outBuf);
     Free(compress);
 
     unsigned int avg = 0;
