@@ -17,17 +17,27 @@
 
 \section{I/O}
 
-TODO: put throughput here
+We were able to get everything up and running. The throughput of the non-accelerated SW only implementation is 6.94Mbps. 
 
 \section{FPGA Acceleration}
 
+We were able to accelerate some functions mainly the LZW which was the bottleneck from the previous measurement. The new measured throughput is 15Mbps which is a ~2.5x improvement in throughput. 
+The current bottleneck is the SHA which will be added to HW and the Deduplication which is at present a O(n2) search. This will also be refined for next submission. 
+All 4 functions identified for hardware implementation will be put together in a dataflow model for the final implementation. 
+
 \subsection{Rabin}
+
+We attempted to put the Rabin fingerprinting onto hardware in this iteration, but ran into issues and decided to stick with a software implementation instead.
 
 \subsection{SHA}
 
+We have not yet moved this step onto the FPGA. Should be added by for project 4. 
+
 \subsection{Deduplication}
 
-We have not yet moved this step onto the FPGA.
+We have not yet moved this step onto the FPGA. Our current development version plans to hash the SHA fingerprint to a smaller number of bits (we're currently looking at 16), and divide a portion of DRAM into "buckets" for it to use. For all of the roughly $2^{17}$ potential "rows" that pair a SHA256 digest with an "output chunk" index, the hashed digest will point to some section of them. We're currently leaning towards a potential hash depth of $2$ (allowing for a factor-of-two hash overflow), which would point to needing to look at four potential digest-index pairs for a digest match.
+\newline\newline
+In this way, for each digest that comes in, we will need to pull $144$ bytes from DRAM to check against our incoming digest. Ideally, this kind of shared memory load is feasible to enact in a reasonable amount of time; once our implementation becomes sensibly integrated, we will know bette
 
 \subsection{LZW Compression}
 
@@ -44,6 +54,14 @@ The hash function was developed highly arbitrarily, but from empirical methods. 
 In terms of clearing the table after each iteration, we are using an array of "valid bits" to keep track of the "validity" of each entry in the hash table; in this fashion, the process of clearing the data should involve significantly fewer operations than trying to set the entirety of the hash table memory.
 \newline\newline
 The primary loop of our hardware function was able to be pipelined down to an \texttt{II} of $6$; if we were to cut down on the maximum chunk size, we're optimistic that we could reduce that further if need be.
+
+\section{Code}
+
+Included in different turn-in location.
+
+\section{Binaries}
+
+Included in different turn-in location.
 
 
 \begin{appendices}
