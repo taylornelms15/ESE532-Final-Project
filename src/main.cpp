@@ -404,23 +404,32 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-
-/*#ifdef __SDSCC__
-            f_write(&File, compress, compress_size, &bytes_written);
-#else*/
+#if READING_FROM_SERVER
             fwrite(compress, sizeof(uint8_t), compress_size, File);
             printf("Compress fhash size: %d\n", compress_size);
-//#endif
+#else
+
+  #ifdef __SDSCC__
+            f_write(&File, compress, compress_size, &bytes_written);
+  #else
+            fwrite(compress, sizeof(uint8_t), compress_size, File);
+            printf("Compress fhash size: %d\n", compress_size);
+  #endif
+#endif
         }//if not found in table
         else{
             uint32_t dupPacket = shaIndex;
             dupPacket <<= 1;
             dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-/*#ifdef __SDSCC__
-            f_write(&File, &dupPacket, 4, &bytes_written);
-#else*/
+#if READING_FROM_SERVER
             fwrite(&dupPacket, sizeof(uint32_t), 1, File);
-//#endif
+#else            
+  #ifdef __SDSCC__
+            f_write(&File, &dupPacket, 4, &bytes_written);
+  #else
+            fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+  #endif
+#endif
 
         }//if found in table
     }
