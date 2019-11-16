@@ -18,10 +18,11 @@
 #define MAXPKTSIZE 4096
 #define HEADER 2
 
-#define HWIMPL
+//#define HWIMPL
 
 #ifdef HWIMPL
 	#define USING_LZW_HW
+	#define USING_RABIN_HW
 #endif
 
 

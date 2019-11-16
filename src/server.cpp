@@ -7,7 +7,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#ifdef __SDSCC__
 #include "sds_lib.h"
+#endif
 #include "server.h"
 
 

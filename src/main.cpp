@@ -15,13 +15,14 @@ extern "C"{
 #include <sds_lib.h>
 #endif
 
+#define USING_RABIN_HW
 
 #ifdef __SDSCC__
 #define MEASURING_LATENCY 1
 #else
 #define MEASURING_LATENCY 0
 #endif
-#define READING_FROM_SERVER 1
+#define READING_FROM_SERVER 0
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -36,7 +37,7 @@ size_t bytes;
 extern uint64_t mod_table[256];
 extern uint64_t out_table[256];
 static const char infileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/ESE532.tar";
-static const char outfileName[] = "/compress.dat";
+static const char outfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/compress.dat";
 static const char linuxInfileName[] = "linux.tar";
 static const char linuxOutfileName[] = "linux.dat";
 
@@ -148,10 +149,11 @@ int main(int argc, char *argv[]) {
     unsigned int chunks = 0;
     BYTE sha_buf[SHA256_BLOCK_SIZE];
 
+#if READING_FROM_SERVER
     //Server things
     ESE532_Server Server = ESE532_Server();
     Server.setup_server();
-
+#endif
 
     //Allocation things
     uint8_t* compress = Allocate(MAXSIZE + 4);
@@ -213,6 +215,7 @@ int main(int argc, char *argv[]) {
 #else
     //read data from file system
     unsigned int len = Load_data(buf);
+    bytes += len;
 
 #ifdef __SDSCC__
     FATFS FS;
@@ -254,16 +257,33 @@ int main(int argc, char *argv[]) {
     //sds_alloc needed for arguments to HW functions 
     uint8_t *chunk = Allocate(MAXSIZE);
     int remaining;
+    unsigned int count = hash->count;
+    unsigned int pos = hash->pos;
+    uint64_t digest = hash->digest;
+    uint8_t *in_window = Allocate(WINSIZE);
+    uint8_t *out_window = Allocate(WINSIZE);
+    memcpy(in_window, hash->window, WINSIZE);
     //   printf("len: %d\n", len);
         while (len > 0) {
 #if MEASURING_LATENCY
         rabin_start = sds_clock_counter();
 #endif
-        	if(len >= MAXSIZE)
-        		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
-        	else
-        		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, len);
 
+#ifdef USING_RABIN_HW
+        	if(len >= MAXSIZE)
+        		remaining = rabin_next_chunk_HW(in_window, out_window, count, pos, digest, ptr, chunk, out_table, mod_table, MAXSIZE);
+        	else
+        		remaining = rabin_next_chunk_HW(in_window, out_window, count, pos, digest, ptr, chunk, out_table, mod_table, len);
+
+        		memcpy(in_window, out_window, WINSIZE);
+        		hash->count = count;
+#else
+        	if(len >= MAXSIZE)
+        		remaining = rabin_next_chunk_SW(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
+        	else
+        		remaining = rabin_next_chunk_SW(hash, ptr, chunk, out_table, mod_table, len);
+
+#endif
 #if MEASURING_LATENCY
         rabin_end = sds_clock_counter();
         rabin_dur += rabin_end - rabin_start;
@@ -334,8 +354,11 @@ int main(int argc, char *argv[]) {
 #if READING_FROM_SERVER
                 fwrite(compress, sizeof(uint8_t), compress_size, File);
 #else
+	#ifdef __SDSCC__
                 f_write(&File, compress, compress_size, &bytes_written);
-
+	#else
+                fwrite(compress, sizeof(uint8_t), compress_size, File);
+	#endif
 #endif
             }//if not found in table
             else{
@@ -345,7 +368,11 @@ int main(int argc, char *argv[]) {
 #if READING_FROM_SERVER
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
 #else
+	#ifdef __SDSCC__
                 f_write(&File, &dupPacket, 4, &bytes_written);
+	#else
+                fwrite(&dupPacket, sizeof(uint32_t), 1, File);
+	#endif
 #endif
 
             }//if found in table
