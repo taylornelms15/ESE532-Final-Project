@@ -170,6 +170,18 @@ int main(int argc, char *argv[]) {
     unsigned long long numBytesUncompressed = 0;//number of bytes fed into LZW
     unsigned long long numBytesCompressed   = 0;//number of bytes fed out of LZW
     unsigned long long timeInLZW            = 0;//how many cycles we spent in LZW
+    uint64_t rabin_start = 0;
+    uint64_t rabin_end = 0;
+    uint64_t rabin_dur = 0;
+    uint64_t sha_start = 0;
+    uint64_t sha_end = 0;
+    uint64_t sha_dur = 0;
+    uint64_t dedup_start = 0;
+    uint64_t dedup_end = 0;
+    uint64_t dedup_dur = 0;
+    uint64_t lzw_start = 0;
+    uint64_t lzw_end = 0;
+    uint64_t lzw_dur = 0;
 #endif
 
 //Doing a single read till end of packets to reduce complexity as of now.
@@ -238,18 +250,24 @@ int main(int argc, char *argv[]) {
     //actually run our program
 
     uint8_t *ptr = buf;
-    uint8_t chunk[MAXSIZE];
-   // bytes += len;
+
+    //sds_alloc needed for arguments to HW functions 
+    uint8_t *chunk = Allocate(MAXSIZE);
     int remaining;
     //   printf("len: %d\n", len);
         while (len > 0) {
-
+#if MEASURING_LATENCY
+        rabin_start = sds_clock_counter();
+#endif
         	if(len >= MAXSIZE)
         		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
         	else
         		remaining = rabin_next_chunk(hash, ptr, chunk, out_table, mod_table, len);
-        	//	printf("remaining: %d\n", remaining);
 
+#if MEASURING_LATENCY
+        rabin_end = sds_clock_counter();
+        rabin_dur += rabin_end - rabin_start;
+#endif
 
             if (remaining < 0) {
                 break;
@@ -259,11 +277,25 @@ int main(int argc, char *argv[]) {
             ptr += remaining;
 
 
+#if MEASURING_LATENCY
+        sha_start = sds_clock_counter();
+#endif
             sha256_init(&ctx);
             sha256_update(&ctx, &chunk[0], remaining);
             sha256_final(&ctx, sha_buf);
+#if MEASURING_LATENCY
+        sha_end = sds_clock_counter();
+        sha_dur += sha_end - sha_start;
+#endif
 
+#if MEASURING_LATENCY
+        dedup_start = sds_clock_counter();
+#endif
             int shaIndex = indexForShaVal(sha_buf);
+#if MEASURING_LATENCY
+        dedup_end = sds_clock_counter();
+        dedup_dur += dedup_end - dedup_start;
+#endif
             if(shaIndex == -1){
 
 #ifdef USING_LZW_HW
@@ -284,7 +316,14 @@ int main(int argc, char *argv[]) {
                 uint32_t header = (compress_size - 4) << 1;
                 memcpy((void*)&compress[0], &header, 1 * sizeof(uint32_t));
 #else
+#if MEASURING_LATENCY
+        lzw_start = sds_clock_counter();
+#endif
                 int compress_size = lzwCompress(&chunk[0], remaining, compress);
+#if MEASURING_LATENCY
+        lzw_end = sds_clock_counter();
+        lzw_dur += lzw_end - lzw_start;
+#endif
 
 #endif
 
@@ -292,22 +331,22 @@ int main(int argc, char *argv[]) {
                 //compareArrays(compress2, compress, compress_size);
 
 
-/*#ifdef __SDSCC__
-                f_write(&File, compress, compress_size, &bytes_written);
-#else*/
+#if READING_FROM_SERVER
                 fwrite(compress, sizeof(uint8_t), compress_size, File);
+#else
+                f_write(&File, compress, compress_size, &bytes_written);
 
-//#endif
+#endif
             }//if not found in table
             else{
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
-/*#ifdef __SDSCC__
-                f_write(&File, &dupPacket, 4, &bytes_written);
-#else*/
+#if READING_FROM_SERVER
                 fwrite(&dupPacket, sizeof(uint32_t), 1, File);
-//#endif
+#else
+                f_write(&File, &dupPacket, 4, &bytes_written);
+#endif
 
             }//if found in table
 
@@ -336,6 +375,13 @@ int main(int argc, char *argv[]) {
             */
 #endif
         }//while(true)
+
+#if MEASURING_LATENCY
+       printf("Rabin avg duration: %d", rabin_dur/chunks);
+       printf("SHA avg duration: %d", sha_dur/chunks);
+       printf("DEDUP avg duration: %d", dedup_dur/chunks);
+       printf("lzw avg duration: %d", lzw_dur/chunks);
+#endif
 
     if (rabin_finalize(hash) != NULL) {
         chunks++;
