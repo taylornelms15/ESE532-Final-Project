@@ -25,6 +25,10 @@
 	#define USING_LZW_HW
 #endif
 
+#ifdef HWIMPL
+	#define USING_CHUNKDICT_HW
+#endif
+
 
 //Chunk dictionary in HW
 #define SHA256_SIZE 32//32-byte digest

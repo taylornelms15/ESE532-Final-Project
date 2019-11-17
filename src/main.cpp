@@ -11,6 +11,7 @@ extern "C"{
 #include <string.h>
 }
 #include "lzw_hw.h"
+#include "chunkdict_hw.h"
 #ifdef __SDSCC__
 #include <sds_lib.h>
 #endif
@@ -157,12 +158,14 @@ int main(int argc, char *argv[]) {
     uint8_t* compress = Allocate(MAXSIZE + 4);
     printf("Compress allocated at %x\n", compress);
 
+    uint8_t* chunkDictTable = Allocate(SHA256TABLESIZE);
 
     printf("Starting main function\n");
 
     //Forcefully using malloc, since sds_alloc cannot allocate 256MB of contiguous memory
     buf = (uint8_t *)malloc(MAXINPUTFILESIZE * sizeof(uint8_t));
     printf("buf allocated at %x\n", buf);
+
 
 
     
@@ -291,7 +294,13 @@ int main(int argc, char *argv[]) {
 #if MEASURING_LATENCY
         dedup_start = sds_clock_counter();
 #endif
+
+#ifdef USING_CHUNKDICT_HW
+            int shaIndex = indexForShaVal_HW(sha_buf, chunkDictTable);
+#else
             int shaIndex = indexForShaVal(sha_buf);
+#endif
+
 #if MEASURING_LATENCY
         dedup_end = sds_clock_counter();
         dedup_dur += dedup_end - dedup_start;
@@ -391,7 +400,12 @@ int main(int argc, char *argv[]) {
         sha256_final(&ctx, sha_buf);
         printf("Chunk_length fhash: %d\n", last_chunk.length);
 
+#ifdef USING_CHUNKDICT_HW
+        int shaIndex = indexForShaVal_HW(sha_buf, chunkDictTable);
+#else
         int shaIndex = indexForShaVal(sha_buf);
+#endif
+
         if(shaIndex == -1){
 
 #ifdef USING_LZW_HW
@@ -439,6 +453,7 @@ int main(int argc, char *argv[]) {
 #else*/
     fclose(File);
 //#endif
+    Free(chunkDictTable);
     Free(buf);
     Free(compress);
 
