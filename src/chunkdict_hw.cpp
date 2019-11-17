@@ -4,7 +4,7 @@
  */
 
 #include "chunkdict_hw.h"
-#include "ap_uint.h"
+#include "ap_int.h"
 
 static uint32_t currentIndex = 0;
 
@@ -29,7 +29,7 @@ ap_uint<HASHBITS> hashShaKey(const uint8_t input[SHA256_SIZE]){
     ap_uint<HASHBITS> retval = 0;
     uint8_t currentHashBit  = 0;
 
-    for(uint8_t i = 0; i < SHA256_SIZE; i++){
+    hashkeyloop:for(uint8_t i = 0; i < SHA256_SIZE; i++){
         #pragma HLS unroll
         uint8_t currentShaByte = input[i];
         for(uint8_t j = 0; j < 8; j++){
@@ -60,21 +60,61 @@ uint32_t getDramOffset(ap_uint<HASHBITS> hashVal){
     return rowNum * BYTES_PER_ROW;
 }//getDramOffset
 
+/**
+ * Stand-ins for memcpy (relevant for synthesis)
+ */
+void memcpyDRAM(uint8_t dst[DRAM_PULL_SIZE], const uint8_t src[DRAM_PULL_SIZE]){
+    #pragma HLS inline
+    memcpydram:for(int i = 0; i < DRAM_PULL_SIZE / 4; i++){
+        #pragma HLS unroll
+    	((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+    }
+}
+void memcpySha(uint8_t dst[SHA256_SIZE], const uint8_t src[SHA256_SIZE]){
+    #pragma HLS inline
+    memcpysha:for(int i = 0; i < SHA256_SIZE / 4; i++){
+        #pragma HLS unroll
+        ((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+    }
+}
+void memcpyRow(uint8_t dst[BYTES_PER_ROW], const uint8_t src[BYTES_PER_ROW]){
+    #pragma HLS inline
+    memcpyrow:for(int i = 0; i < BYTES_PER_ROW / 4; i++){
+        #pragma HLS unroll
+    	((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+    }
+}
+void memcpy4F(uint8_t* dst, const uint32_t src){
+	#pragma HLS inline
+	dst[0] = (uint8_t) src >> 24;
+	dst[1] = (uint8_t) src >> 16;
+	dst[2] = (uint8_t) src >> 8;
+	dst[3] = (uint8_t) src >> 0;
+}
+void memcpy4B(uint32_t* dst, const uint8_t* src){
+	#pragma HLS inline
+	*dst = (((uint32_t) src[0]) << 24) |
+           (((uint32_t) src[1]) << 16) |
+           (((uint32_t) src[2]) << 8) |
+           (((uint32_t) src[3]) << 0);
+}
 
-void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t* tableLocation, ap_uint<HASHBITS> key, uint8_t candidates[DRAM_PULL_SIZE]){
 
+void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE], ap_uint<HASHBITS> key, uint8_t candidates[DRAM_PULL_SIZE]){
+    #pragma HLS inline
     uint8_t storeBuffer[BYTES_PER_ROW];//stores the SHA value, plus 4 bytes for the current index
-    memcpy(storeBuffer, newVal, SHA256_BLOCK_SIZE);
-    memcpy(storeBuffer + SHA256_BLOCK_SIZE, &currentIndex, 4);
+    #pragma HLS array_partition variable=storeBuffer
+    memcpySha(storeBuffer, newVal);
+    memcpy4F(storeBuffer + SHA256_SIZE, currentIndex);
 
     uint32_t offset = getDramOffset(key);
 
     int rowOffset = -1;
-    for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
         #pragma HLS unroll
         uint32_t candIndex;
-        uint8_t* indexPortion = candidates[i + SHA256_SIZE];
-        memcpy(&candIndex, indexPortion, sizeof(uint32_t));
+        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        memcpy4B(&candIndex, indexPortion);
         if (candIndex >= SHANOTFOUND){
             rowOffset = i;
             break;
@@ -85,7 +125,7 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t* tableLocation, ap
     }//if hash overflow
 
     uint32_t storageOffset = offset + rowOffset;
-    memcpy(tableLocation + storageOffset, storeBuffer, BYTES_PER_ROW);
+    memcpyRow(tableLocation + storageOffset, storeBuffer);
 
     currentIndex++;
 }//storeNewValue
@@ -94,28 +134,29 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t* tableLocation, ap
  * Pulls all possible records of our hash-index pair from DRAM memory
  */
 void pullRecordsFromTable(const uint8_t* tableLocation, uint8_t* destination, ap_uint<HASHBITS> key){
+    #pragma HLS inline
     uint32_t offset = getDramOffset(key);
 
-    memcpy(destination, tableLocation + offset, DRAM_PULL_SIZE);
+    memcpyDRAM(destination, tableLocation + offset);
 }//pullRecordsFromTable
 
 /**
  * @return 1 if buffers equal, 0 otherwise
  */
-int shaRecordsEqual(uint8_t record1[SHA256_SIZE], uint8_t record2[SHA256_SIZE]){
+int shaRecordsEqual(const uint8_t record1[SHA256_SIZE], const uint8_t record2[SHA256_SIZE]){
     #pragma HLS inline
     int retval = 1;
-    for(int i = 0; i < SHA256_SIZE; i++){
+    recordsequalloop:for(int i = 0; i < SHA256_SIZE; i++){
         #pragma HLS unroll
         if (record1[i] != record2[i]){
             retval = 0;
         }//if
     }//for
 
-    return retval
+    return retval;
 }//shaRecordsEqual
 
-int indexForShaValue_HW(const uint8_t input[SHA256_SIZE], uint8_t* tableLocation){
+int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE]){
     ap_uint<HASHBITS> key = hashShaKey(input);
     uint8_t candidates[DRAM_PULL_SIZE];
 
@@ -123,12 +164,12 @@ int indexForShaValue_HW(const uint8_t input[SHA256_SIZE], uint8_t* tableLocation
 
 
     uint32_t indexVal = SHANOTFOUND;
-    for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findequalrecordloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
         #pragma HLS unroll
-        uint8_t* shaPortion = candidates[i];
-        uint8_t* indexPortion = candidates[i + SHA256_SIZE];
+        uint8_t* shaPortion = &candidates[i];
+        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
         if (shaRecordsEqual(input, shaPortion)){
-            memcpy(&indexVal, indexPortion, sizeof(uint32_t));
+            memcpy4B(&indexVal, indexPortion);
         }//if
     }//for each candidate
 
@@ -149,8 +190,10 @@ int indexForShaValue_HW(const uint8_t input[SHA256_SIZE], uint8_t* tableLocation
 /**
  * Note: this should NOT be a hardware function!
  */
-void resetTable_HW(uint8_t* tableLocation){
-
+void resetTable_HW(uint8_t tableLocation[SHA256TABLESIZE]){
+    for (int i = 0; i < SHA256TABLESIZE; i++){
+        tableLocation[i] = 0xFF;
+    }
 }//resetTable
 
 
