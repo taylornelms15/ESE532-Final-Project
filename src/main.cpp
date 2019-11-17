@@ -158,7 +158,9 @@ int main(int argc, char *argv[]) {
     uint8_t* compress = Allocate(MAXSIZE + 4);
     printf("Compress allocated at %x\n", compress);
 
+#ifdef USING_CHUNKDICT_HW
     uint8_t* chunkDictTable = Allocate(SHA256TABLESIZE);
+#endif
 
     printf("Starting main function\n");
 
@@ -453,7 +455,9 @@ int main(int argc, char *argv[]) {
 #else*/
     fclose(File);
 //#endif
+#ifdef USING_CHUNKDICT_HW
     Free(chunkDictTable);
+#endif
     Free(buf);
     Free(compress);
 
