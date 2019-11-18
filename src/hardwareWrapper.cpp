@@ -21,7 +21,7 @@ void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &read
 
 }//readIntoRabin
 
-uint32_t finalOutput(hls::stream< ap_uint<9> > deduplicateToOutput, uint8_t output[OUTBUFFER_SIZE]){
+uint32_t finalOutput(hls::stream< ap_uint<9> > deduplicateToOutput, uint8_t output[OUTBUFFER_SIZE], uint32_t numElements){
 
     uint32_t numOutput = 0;
 
@@ -61,7 +61,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     //sha_hw(rabinToSHA, shaToDeduplicate);
     //lzw_hw(rabinToLZW, lzwToDeduplicate);
     //deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
-    uint32_t numOutput = finalOutput(deduplicateToOutput, output);
+    uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 
 
     return numOutput;
