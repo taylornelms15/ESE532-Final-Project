@@ -5,6 +5,7 @@
 
 #include "hardwareWrapper.h"
 #include "deduplicate_hw.h"
+#include "lzw_hw.h"
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
     int hitActualEndOfFile = 0;
@@ -61,7 +62,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     readIntoRabin(input, readerToRabin, numElements);
     //rabin_hw(readerToRabin, rabinToSHA, rabinToLZW);
     //sha_hw(rabinToSHA, shaToDeduplicate);
-    //lzw_hw(rabinToLZW, lzwToDeduplicate);
+    lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 

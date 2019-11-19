@@ -185,3 +185,15 @@ int main(int argc, char* argv[]){
     return 0;
 }//main
 
+
+/*
+ * These are extra software functions, moving them out of hardware cpp files
+ *
+ */
+
+/**
+ * Software clear of table contents
+ */
+void resetTable(uint8_t tableLocation[SHA256TABLESIZE]){
+    memset(tableLocation, 0xFF, SHA256TABLESIZE);
+}
