@@ -15,7 +15,13 @@
 int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE]);
 
 
-
+/**
+ * Resets the table using memset. Only used in software
+ */
+void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
+/**
+ * Resets the table by looping through. Likely unused.
+ */
 void resetTable_HW(uint8_t tableLocation[SHA256TABLESIZE]);
 
 

@@ -7,10 +7,11 @@
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
     int hitActualEndOfFile = 0;
-    for (int i = 0; i < numElements; i++){
+    for (int i = 0; i < INBUFFER_SIZE; i++){
         #pragma HLS pipeline II=1
         uint8_t nextValue = input[i];
-
+        if (i >= numElements){
+        	int x = 0;
         }//do nothing if past end
         else{
             readerToRabin.write( (ap_uint<9>) nextValue);
@@ -21,7 +22,7 @@ void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &read
 
 }//readIntoRabin
 
-uint32_t finalOutput(hls::stream< ap_uint<9> > deduplicateToOutput, uint8_t output[OUTBUFFER_SIZE], uint32_t numElements){
+uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t output[OUTBUFFER_SIZE], uint32_t numElements){
 
     uint32_t numOutput = 0;
 

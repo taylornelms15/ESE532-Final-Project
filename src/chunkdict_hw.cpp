@@ -188,7 +188,13 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 }//indexForShaValue_HW
 
 /**
- * Note: this should NOT be a hardware function!
+ * Software clear of table contents
+ */
+void resetTable(uint8_t tableLocation[SHA256TABLESIZE]){
+    memset(tableLocation, 0xFF, SHA256TABLESIZE);
+}
+/**
+ * Likely unused
  */
 void resetTable_HW(uint8_t tableLocation[SHA256TABLESIZE]){
     for (int i = 0; i < SHA256TABLESIZE; i++){
