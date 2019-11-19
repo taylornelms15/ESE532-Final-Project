@@ -111,20 +111,23 @@ unsigned int Load_data(unsigned char * Data)
  * This function encapsulates reading the next bits of data into our buffer for hardware processing
  * It will either read from an input file, or read from the server, depending on the defines
  *
- * @return number of elements read into our hardware buffer
+ * @return Number of elements read into our hardware buffer, or 0 if we've hit the end.
  */
 #if READING_FROM_SERVER
 uint32_t readDataIntoBuffer(uint8_t* hwBuffer){
+    //TODO: put in server reads here
 #else
 uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fileOffset, uint32_t fileSize){
-	if (fileSize - fileOffset < INBUFFER_SIZE){
-		memcpy(hwBuffer, fileBuffer + fileOffset, fileSize - fileOffset);
-		return fileSize - fileOffset;
-	}
-	else{
-		memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE);
-		return INBUFFER_SIZE;
-	}
+    uint32_t remainingSize = fileSize - (fileOffset + 1);
+    if (remainingSize == 0) return 0;
+    else if (remainingSize < INBUFFER_SIZE){
+        memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize);
+        return remainingSize;
+    }
+    else{
+        memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE);
+        return INBUFFER_SIZE;
+    }
 #endif
 }//readDataIntoBuffer
 
@@ -142,12 +145,16 @@ int main(int argc, char* argv[]){
     resetTable(chunkTable);
 
 #if READING_FROM_SERVER
-    //TODO: put server functions here
+    //TODO: init server here
 #else
     uint8_t* fileBuffer 	= Allocate(MAXINPUTFILESIZE);
     uint32_t fileSize 		= Load_data(fileBuffer);
     uint32_t fileOffset 	= 0;
 #endif
+	
+    #if MEASURING_LATENCY
+    unsigned long long overallStart = sds_clock_counter();
+    #endif
 
     while(true){
         uint32_t nextBufferSize =
@@ -157,12 +164,17 @@ int main(int argc, char* argv[]){
                 readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
                 fileOffset += nextBufferSize;
         #endif
-
+        if (nextBufferSize == 0){
+            break;
+        }
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
     }
 
-
+    #if MEASURING_LATENCY
+    unsigned long long overallEnd = sds_clock_counter();
+    printf("Overall latency %lld\n", overallEnd - overallStart;
+    #endif
 
     Free(chunkTable);
     Free(hwBuffer);
