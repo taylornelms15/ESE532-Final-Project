@@ -10,9 +10,6 @@
 #include "ap_int.h"
 #include <hls_stream.h>
 
-#define INBUFFER_SIZE 2000000 //2MB incoming buffer
-#define OUTBUFFER_SIZE (INBUFFER_SIZE)
-
 /**
  * Takes in a buffer full of data, streams it through our processing, and fills an output buffer
  * Will want to make this the top-level function when synthesizing our FPGA things
