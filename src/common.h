@@ -13,6 +13,8 @@
 #define MAXINPUTFILESIZE (1 << 28)//270MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
+#define USING_SHA_HW
+//#define SHA_TEST
 
 
 

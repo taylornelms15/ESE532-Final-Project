@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "common.h"
+
 extern "C"
 {
 #include "rabin.h"
@@ -22,10 +24,7 @@ extern "C"
 #endif
 
 //#define USING_LZW_HW
-#define USING_SHA_HW
-#define SHA_TEST
 
-#include "common.h"
 
 // 1MiB buffer
 uint8_t* buf;
