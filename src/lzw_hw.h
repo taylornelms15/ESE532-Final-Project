@@ -8,7 +8,6 @@
 
 #include "common.h"
 #include "ap_int.h"
-#include <stdint.h>
 #include <hls_stream.h>
 #define MAXCHUNKLENGTH (MAXSIZE)
 

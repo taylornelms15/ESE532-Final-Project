@@ -64,7 +64,7 @@ uint32_t fillHeaderBuffer(ap_uint<9> headerBuffer[5], uint8_t foundSha, int shaI
 }//fillHeaderBuffer
 
 void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput, ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1], uint32_t packetSendSize){
-    #pragma HLS inline
+
     for(int i = 0; i < MAXSIZE + 4 + 1; i++){
         if (i == packetSendSize) break;
         deduplicateToOutput.write(lzwOutputBuffer[i]);

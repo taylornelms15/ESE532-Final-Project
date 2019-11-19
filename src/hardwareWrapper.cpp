@@ -6,6 +6,7 @@
 #include "hardwareWrapper.h"
 #include "deduplicate_hw.h"
 #include "lzw_hw.h"
+#include "standinfuncts.h"
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
     int hitActualEndOfFile = 0;
@@ -60,7 +61,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
 
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);
-    //rabin_hw(readerToRabin, rabinToSHA, rabinToLZW);
+    rabin_hw_fake(readerToRabin, rabinToSHA, rabinToLZW, numElements);
     //sha_hw(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
