@@ -13,7 +13,7 @@
  * @return Size of actual chunk, with header and ending byte
  */
 uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, ap_uint<9> buffer[MAXSIZE + 1], uint8_t wasEndOfFile[1]){
-    //#pragma HLS inline
+    #pragma HLS inline
     ap_uint<9> endByte = ENDOFCHUNK;
     for(uint32_t i = 0; i < MAXSIZE + 1; i++){
         #pragma HLS pipeline
@@ -33,6 +33,7 @@ uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, ap_uint<9> buf
 }//readFromLzw
 
 uint32_t fillHeaderBuffer(ap_uint<9> headerBuffer[5], uint8_t foundSha, int shaIndex, uint32_t lzwChunkSize, uint8_t wasEndOfFile){
+    #pragma HLS inline
     uint32_t shiftedIndex;
     uint32_t sizeOfEndPacket;
     if (foundSha){
@@ -91,8 +92,13 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
             return;
         }//if the last run was our final one
 
+        //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
+        uint32_t packetSize = readFromLzw(lzwToDeduplicate, lzwOutputBuffer + 4, wasEndOfFile);//don't bother giving it the first 4 header bytes
+        uint32_t lzwChunkSize = packetSize - 5;//write this value (modified) to the header
+
         //read in our SHA value
         for (uint8_t i = 0; i < SHA256_SIZE; i++){
+            #pragma HLS unroll
             uint8_t nextVal = shaToDeduplicate.read();
             shaBuffer[i] = nextVal;
         }//for
@@ -102,9 +108,6 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         if (shaIndex < 0) foundSha = 0;
         else foundSha = 1;
         
-        //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
-        uint32_t packetSize = readFromLzw(lzwToDeduplicate, lzwOutputBuffer + 4, wasEndOfFile);//don't bother giving it the first 4 header bytes
-        uint32_t lzwChunkSize = packetSize - 5;//write this value (modified) to the header
 
         //fill in the header appropriately
         uint32_t packetSendSize = fillHeaderBuffer(lzwOutputBuffer, foundSha, shaIndex, lzwChunkSize, wasEndOfFile[0]);

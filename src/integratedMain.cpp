@@ -107,7 +107,7 @@ unsigned int Load_data(unsigned char * Data)
   return Bytes_read;
 }
 
-unsigned int Store_Data(uint32_t* Data, uint32_t dataSize){
+unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
     unsigned int Bytes_written;
 #ifdef __SDSCC__
   FIL File;
@@ -118,7 +118,7 @@ unsigned int Store_Data(uint32_t* Data, uint32_t dataSize){
   Check_error(Result != FR_OK, "Could not read output file.");
   Check_error(f_close(&File) != FR_OK, "Could not close output file.");
 #else
-  FILE * File = fopen(infileName, "wb");
+  FILE * File = fopen(outfileName, "wb");
   if (File == NULL){
       printf("Could not open output file\n");
       Exit_with_error();
@@ -188,16 +188,17 @@ int main(int argc, char* argv[]){
     while(true){
         uint32_t nextBufferSize =
         #if READING_FROM_SERVER
-                readDataIntoBuffer(hwBuffer);
+            readDataIntoBuffer(hwBuffer);
         #else
-                readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
-                fileOffset += nextBufferSize;
+            readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
+            fileOffset += nextBufferSize;
         #endif
         if (nextBufferSize == 0){
             break;
         }
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
+        printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
 
     #if MEASURING_LATENCY
@@ -205,8 +206,12 @@ int main(int argc, char* argv[]){
     printf("Overall latency %lld\n", overallEnd - overallStart;
     #endif
 
+    Store_Data(output, outputOffset + 1);
+    printf("Stored data successfully\n");
+
     Free(chunkTable);
     Free(hwBuffer);
+    Free(output);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #endif

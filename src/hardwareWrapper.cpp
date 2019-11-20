@@ -35,6 +35,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
             output[numOutput++] = (uint8_t) nextByte;
         }//if valid piece of data
         else{
+            numOutput++;//now reflects length, not index
             break;
         }//else
 
@@ -47,8 +48,8 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
                        uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements){
-    #pragma HLS STREAM variable=input depth=8//not sure if good number
-    #pragma HLS STREAM variable=output depth=8//not sure if good number
+    #pragma HLS STREAM variable=input //depth=32//not sure if good number
+    #pragma HLS STREAM variable=output //depth=32//not sure if good number
 
     static hls::stream< ap_uint<9> > readerToRabin;
     static hls::stream< ap_uint<9> > rabinToSHA; 
