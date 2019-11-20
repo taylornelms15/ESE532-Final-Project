@@ -12,8 +12,8 @@
 struct chunk_t last_chunk;
 
 static bool tables_initialized = false;
-uint64_t mod_table[256];
-uint64_t out_table[256];
+unsigned long long mod_table[256];
+unsigned long long out_table[256];
 
 static int deg(uint64_t p) {
     uint64_t mask = 0x8000000000000000LL;
@@ -122,13 +122,27 @@ void rabin_reset(struct rabin_t *h) {
 
 
 #pragma SDS data access_pattern(buf:SEQUENTIAL, chunk:SEQUENTIAL)
-#pragma SDS data copy(in_window[0:WINSIZE], out_window[0:WINSIZE], buf[0:len], chunk[0:MAXSIZE], out_table[0:256], mod_table[0:256])
-int rabin_next_chunk_HW(uint8_t in_window[WINSIZE],uint8_t out_window[WINSIZE], unsigned int count, unsigned int pos, uint64_t digest, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], uint64_t out_table[256], uint64_t mod_table[256], unsigned int len) {
+#pragma SDS data copy(buf[0:len], chunk[0:len], out_table[0:256], mod_table[0:256])
+int rabin_next_chunk_HW(uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned long long out_table[256], unsigned long long mod_table[256], unsigned int len) {
 
     uint8_t wpos = 0;
-    //uint8_t window[WINSIZE];
-   // uint8_t is_stop = 0;
+    uint64_t digest = 0;
+    signed int count = 0;
+    last_chunk.length = -1;
+    uint8_t window[WINSIZE];
+ #pragma HLS ARRAY_PARTITION variable=window dim=1 complete
 
+    for (int j = 0; j < WINSIZE; j++)
+      window[j] = 0;
+
+    uint8_t out = window[0];
+    window[0] = 1;
+    wpos = (wpos +1 ) % WINSIZE;
+
+    digest = (digest ^ out_table[out]);
+    uint8_t index = (uint8_t)(digest >> POL_SHIFT);
+
+    digest = (digest << 8 | (uint64_t)1) ^ mod_table[index];
 
 
 	chunk_loop:for (unsigned int i = 0; i < len; i++) {
@@ -136,20 +150,21 @@ int rabin_next_chunk_HW(uint8_t in_window[WINSIZE],uint8_t out_window[WINSIZE], 
 		#pragma HLS pipeline II=1
         uint8_t b = buf[i];
 
-     //   if (is_stop == 0) {
-        uint8_t out = in_window[wpos];
-        out_window[wpos] = b;
+
+
+        out = window[wpos];
+        window[wpos] = b;
         wpos = (wpos +1 ) % WINSIZE;
 
         digest = (digest ^ out_table[out]);
-        uint8_t index = (uint8_t)(digest >> POL_SHIFT);
+        index = (uint8_t)(digest >> POL_SHIFT);
 
         digest = (digest << 8 | (uint64_t)b) ^ mod_table[index];
 
         count++;
-        pos++;
+
         chunk[i] = b;
-       // }
+
 
       //  if (((count >= MINSIZE) && (digest & MASK) == 0) || count >= MAXSIZE) {
         if (count >= MINSIZE) {
@@ -167,12 +182,11 @@ int rabin_next_chunk_HW(uint8_t in_window[WINSIZE],uint8_t out_window[WINSIZE], 
              /*   h->digest = 0;
                 h->count = 0;
                 */
-                digest = 0;
-                count = 0;
+            //    digest = 0;
+                count = MINSIZE - len;
 
            // h->pos = pos;
-           // is_stop = 1;
-            return last_chunk.length;
+           // return last_chunk.length;
             //return i+1;
         }
         if(count >= MAXSIZE) {
@@ -188,12 +202,12 @@ int rabin_next_chunk_HW(uint8_t in_window[WINSIZE],uint8_t out_window[WINSIZE], 
         	 /*               h->digest = 0;
         	                h->count = 0;
         	                */
-        	                digest = 0;
-        	                count = 0;
+        	       //         digest = 0;
+
+        	                count = MINSIZE - len;
 
         	           // h->pos = pos;
-        	           // is_stop = 1;
-        	            return last_chunk.length;
+        	     //       return last_chunk.length;
         	            //return i+1;
 
         	}
@@ -202,8 +216,7 @@ int rabin_next_chunk_HW(uint8_t in_window[WINSIZE],uint8_t out_window[WINSIZE], 
 //	h->count = count;
 	//h->pos = pos;
 
-	return -1;
-	//last_chunk.length;
+	return last_chunk.length;
 
 }
 

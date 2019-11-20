@@ -15,14 +15,13 @@ extern "C"{
 #include <sds_lib.h>
 #endif
 
-#define USING_RABIN_HW
 
 #ifdef __SDSCC__
 #define MEASURING_LATENCY 1
 #else
 #define MEASURING_LATENCY 0
 #endif
-#define READING_FROM_SERVER 0
+#define READING_FROM_SERVER 1
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -34,9 +33,9 @@ extern "C"{
 uint8_t* buf;
 size_t bytes;
 
-extern uint64_t mod_table[256];
-extern uint64_t out_table[256];
-static const char infileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/ESE532.tar";
+extern unsigned long long mod_table[256];
+extern unsigned long long out_table[256];
+static const char infileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/Franklin.txt";
 static const char outfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/compress.dat";
 static const char linuxInfileName[] = "linux.tar";
 static const char linuxOutfileName[] = "linux.dat";
@@ -260,9 +259,8 @@ int main(int argc, char *argv[]) {
     unsigned int count = hash->count;
     unsigned int pos = hash->pos;
     uint64_t digest = hash->digest;
-    uint8_t *in_window = Allocate(WINSIZE);
-    uint8_t *out_window = Allocate(WINSIZE);
-    memcpy(in_window, hash->window, WINSIZE);
+    unsigned int buf_len = 0;
+
     //   printf("len: %d\n", len);
         while (len > 0) {
 #if MEASURING_LATENCY
@@ -270,13 +268,14 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef USING_RABIN_HW
-        	if(len >= MAXSIZE)
-        		remaining = rabin_next_chunk_HW(in_window, out_window, count, pos, digest, ptr, chunk, out_table, mod_table, MAXSIZE);
-        	else
-        		remaining = rabin_next_chunk_HW(in_window, out_window, count, pos, digest, ptr, chunk, out_table, mod_table, len);
+        	if(len >= MAXSIZE) {
+        	  buf_len = MAXSIZE;	
+          } else {
+            buf_len = len;
+          }
+            remaining = rabin_next_chunk_HW(ptr, chunk, out_table, mod_table, buf_len);
 
-        		memcpy(in_window, out_window, WINSIZE);
-        		hash->count = count;
+
 #else
         	if(len >= MAXSIZE)
         		remaining = rabin_next_chunk_SW(hash, ptr, chunk, out_table, mod_table, MAXSIZE);
@@ -410,24 +409,24 @@ int main(int argc, char *argv[]) {
        printf("lzw avg duration: %d", lzw_dur/chunks);
 #endif
 
-    if (rabin_finalize(hash) != NULL) {
+    if (len > 0) {
         chunks++;
 
         sha256_init(&ctx);
-        sha256_update(&ctx, &chunk[0], last_chunk.length);
+        sha256_update(&ctx, &chunk[0], len);
         sha256_final(&ctx, sha_buf);
-        printf("Chunk_length fhash: %d\n", last_chunk.length);
+        printf("Chunk_length fhash: %d\n", len);
 
         int shaIndex = indexForShaVal(sha_buf);
         if(shaIndex == -1){
 
 #ifdef USING_LZW_HW
 
-            int compress_size = lzwCompressWrapper(&chunk[0], last_chunk.length, &compress[4]);
+            int compress_size = lzwCompressWrapper(&chunk[0], len, &compress[4]);
             uint32_t header = (compress_size - 4) << 1;
             memcpy((void*)&compress[0], &header, 1 * sizeof(uint32_t));
 #else
-            int compress_size = lzwCompress(&chunk[0], last_chunk.length, compress);
+            int compress_size = lzwCompress(&chunk[0], len, compress);
 #endif
 
 
