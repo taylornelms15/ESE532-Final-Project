@@ -48,13 +48,13 @@ void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 
 	loop_1:for (i = 0, j = 0; i < 16; ++i, j += 4)
 	{
-#pragma HLS unroll
+//#pragma HLS unroll
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	}
 
 	loop_2:for ( ; i < 64; ++i)
 	{
-#pragma HLS unroll factor=2
+//#pragma HLS unroll factor=2
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 	}
 
@@ -69,7 +69,7 @@ void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 
 	update_loop:for (i = 0; i < 64; ++i)
 	{
-#pragma HLS pipeline
+//#pragma HLS pipeline
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;
@@ -97,7 +97,7 @@ void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 /** Top-level function */
 void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
 {
-#pragma HLS allocation instances=sha256_hw_transform limit=1 function
+//#pragma HLS allocation instances=sha256_hw_transform limit=1 function
 	WORD_SHA state[8];
 #pragma HLS array_partition variable=state
 
@@ -110,7 +110,6 @@ void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BL
 	state[6] = 0x1f83d9ab;
 	state[7] = 0x5be0cd19;
 
-//#pragma HLS DATAFLOW
 	BYTE subchunk[64];
 #pragma HLS array_partition variable=subchunk
 
