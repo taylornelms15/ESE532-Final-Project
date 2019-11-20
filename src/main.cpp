@@ -24,11 +24,11 @@ extern "C"
 #endif
 
 #ifdef __SDSCC__
-#define MEASURING_LATENCY 0
-#else
 #define MEASURING_LATENCY 1
+#else
+#define MEASURING_LATENCY 0
 #endif
-#define READING_FROM_SERVER 1
+//#define READING_FROM_SERVER 1
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -346,6 +346,10 @@ int main(int argc, char *argv[]) {
         sha_start = sds_clock_counter();
 #endif
             sha256_hw_compute(&chunk[0], remaining, sha_buf_hw);
+            printf("hash values: \n");
+            	for(int i = 0; i < SHA256_BLOCK_SIZE; i++)
+            		printf("%x ", sha_buf_hw[i]);
+            	printf("\n");
 #if MEASURING_LATENCY
         sha_end = sds_clock_counter();
         sha_dur += sha_end - sha_start;
@@ -356,16 +360,16 @@ int main(int argc, char *argv[]) {
             sha256_update(&ctx, &chunk[0], remaining);
             sha256_final(&ctx, sha_buf);
 
-            compare(sha_buf, sha_buf_hw);
+            //compare(sha_buf, sha_buf_hw);
 #endif
 #if MEASURING_LATENCY
         dedup_start = sds_clock_counter();
 #endif
 
 #ifdef USING_CHUNKDICT_HW
-            int shaIndex = indexForShaVal_HW(sha_buf, chunkDictTable);
+            int shaIndex = indexForShaVal_HW(sha_buf_hw, chunkDictTable);
 #else
-            int shaIndex = indexForShaVal(sha_buf);
+            int shaIndex = indexForShaVal(sha_buf_hw);
 #endif
 
 #if MEASURING_LATENCY
@@ -374,6 +378,7 @@ int main(int argc, char *argv[]) {
 #endif
             if(shaIndex == -1){
 
+            	printf("duplicate packet not found\n\n");
 #ifdef USING_LZW_HW
 
                 #if MEASURING_LATENCY
@@ -418,6 +423,7 @@ int main(int argc, char *argv[]) {
 #endif
             }//if not found in table
             else{
+            	printf("duplicate packet found\n\n");
                 uint32_t dupPacket = shaIndex;
                 dupPacket <<= 1;
                 dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate
@@ -477,14 +483,14 @@ int main(int argc, char *argv[]) {
         sha256_final(&ctx, sha_buf);
         printf("Chunk_length fhash: %d\n", len);
 
-        compare(sha_buf, sha_buf_hw);
+        //compare(sha_buf, sha_buf_hw);
 #endif
 
 
 #ifdef USING_CHUNKDICT_HW
-        int shaIndex = indexForShaVal_HW(sha_buf, chunkDictTable);
+        int shaIndex = indexForShaVal_HW(sha_buf_hw, chunkDictTable);
 #else
-        int shaIndex = indexForShaVal(sha_buf);
+        int shaIndex = indexForShaVal(sha_buf_hw);
 #endif
 
         if(shaIndex == -1){
@@ -513,6 +519,7 @@ int main(int argc, char *argv[]) {
 #endif
         }//if not found in table
         else{
+
             uint32_t dupPacket = shaIndex;
             dupPacket <<= 1;
             dupPacket |= 0x1;//bit 0 becomes a 1 to indicate a duplicate

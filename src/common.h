@@ -27,10 +27,11 @@
 	#define USING_LZW_HW
 	#define USING_RABIN_HW
 	#define USING_SHA_HW
+	//#define SHA_TEST
 #endif
 
 #ifdef HWIMPL
-	#define USING_CHUNKDICT_HW
+	//#define USING_CHUNKDICT_HW
 #endif
 
 
