@@ -66,7 +66,7 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //read the input stream
         for (int i = 0; i < MAXSIZE + 1; i++){
-            #pragma HLS pipeline
+            #pragma HLS pipeline II=2
             #pragma HLS loop_tripcount min=1024 max=6144 avg=2048
             ap_uint<9> nextVal = rabinToSHA.read();
             if (nextVal == ENDOFCHUNK || nextVal == ENDOFFILE){
@@ -80,7 +80,7 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //output 32 random bytes
         for (int i = 0; i < SHA256_SIZE; i++){
-            #pragma HLS pipeline
+            #pragma HLS pipeline II=2
             uint8_t nextByte = (uint8_t) PRNG();
             shaToDeduplicate.write(nextByte);
 
