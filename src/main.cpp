@@ -17,15 +17,16 @@ extern "C"
 #include <string.h>
 }
 #include "lzw_hw.h"
+#include "sha256_hw.h"
 #include "chunkdict_hw.h"
 #ifdef __SDSCC__
 #include <sds_lib.h>
 #endif
 
 #ifdef __SDSCC__
-#define MEASURING_LATENCY 1
-#else
 #define MEASURING_LATENCY 0
+#else
+#define MEASURING_LATENCY 1
 #endif
 #define READING_FROM_SERVER 1
 
@@ -188,6 +189,7 @@ int main(int argc, char *argv[]) {
     SHA256_CTX ctx;
     unsigned int chunks = 0;
     BYTE sha_buf_hw[SHA256_BLOCK_SIZE];
+    BYTE sha_buf[SHA256_BLOCK_SIZE];
 
 #if READING_FROM_SERVER
     //Server things
@@ -339,24 +341,23 @@ int main(int argc, char *argv[]) {
 
             len -= remaining;
             ptr += remaining;
-//#ifdef USING_SHA_HW
-            sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf_hw);
-//#else
-
-
+#ifdef USING_SHA_HW
 #if MEASURING_LATENCY
         sha_start = sds_clock_counter();
 #endif
-            sha256_init(&ctx);
-            sha256_update(&ctx, &chunk[0], remaining);
-            sha256_final(&ctx, sha_buf);
+            sha256_hw_compute(&chunk[0], remaining, sha_buf_hw);
 #if MEASURING_LATENCY
         sha_end = sds_clock_counter();
         sha_dur += sha_end - sha_start;
 #endif
+#else
+
+            sha256_init(&ctx);
+            sha256_update(&ctx, &chunk[0], remaining);
+            sha256_final(&ctx, sha_buf);
 
             compare(sha_buf, sha_buf_hw);
-//#endif
+#endif
 #if MEASURING_LATENCY
         dedup_start = sds_clock_counter();
 #endif
@@ -468,16 +469,16 @@ int main(int argc, char *argv[]) {
     if (len > 0) {
         chunks++;
 
-//#ifdef USING_SHA_HW
-        sha256_hw_compute(&buf[last_chunk.start], last_chunk.length, sha_buf_hw);
-//#else
+#ifdef USING_SHA_HW
+        sha256_hw_compute(&chunk[0], len, sha_buf_hw);
+#else
         sha256_init(&ctx);
         sha256_update(&ctx, &chunk[0], len);
         sha256_final(&ctx, sha_buf);
         printf("Chunk_length fhash: %d\n", len);
 
         compare(sha_buf, sha_buf_hw);
-//#endif
+#endif
 
 
 #ifdef USING_CHUNKDICT_HW

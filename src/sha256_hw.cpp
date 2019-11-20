@@ -92,10 +92,10 @@ void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 	state[7] += h;
 }
 
-#pragma SDS data access_pattern(data:SEQUENTIAL, hash:SEQUENTIAL)
+#pragma SDS data access_pattern(data:SEQUENTIAL)
 #pragma SDS data copy(data[0:len])
 /** Top-level function */
-void sha256_hw_compute(const BYTE data[MAXSIZE], size_t len, BYTE hash[SHA256_BLOCK_SIZE])
+void sha256_hw_compute(const BYTE data[MAXSIZE], int len, BYTE hash[SHA256_BLOCK_SIZE])
 {
 //#pragma HLS allocation instances=sha256_hw_transform limit=1 function
 	WORD_SHA state[8];

@@ -16,16 +16,17 @@
 #define MAXINPUTFILESIZE (1 << 28)//256MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
-#define USING_SHA_HW
+
 //#define SHA_TEST
 #define MAXPKTSIZE 4096
 #define HEADER 2
 
-//#define HWIMPL
+#define HWIMPL
 
 #ifdef HWIMPL
 	#define USING_LZW_HW
 	#define USING_RABIN_HW
+	#define USING_SHA_HW
 #endif
 
 #ifdef HWIMPL

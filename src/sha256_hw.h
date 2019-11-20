@@ -4,6 +4,6 @@
 #include <stddef.h>
 #include "sha_256.h"
 
-void sha256_hw_compute(const BYTE* data, size_t len, BYTE hash[SHA256_BLOCK_SIZE]);
+void sha256_hw_compute(const BYTE* data, int len, BYTE hash[SHA256_BLOCK_SIZE]);
 
 #endif	// SHA256_HW
