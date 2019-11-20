@@ -13,7 +13,7 @@
  * @return Size of actual chunk, with header and ending byte
  */
 uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, ap_uint<9> buffer[MAXSIZE + 1], uint8_t wasEndOfFile[1]){
-    #pragma HLS inline
+    //#pragma HLS inline
     ap_uint<9> endByte = ENDOFCHUNK;
     for(uint32_t i = 0; i < MAXSIZE + 1; i++){
         ap_uint<9> nextVal = lzwToDeduplicate.read();
@@ -32,7 +32,6 @@ uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, ap_uint<9> buf
 }//readFromLzw
 
 uint32_t fillHeaderBuffer(ap_uint<9> headerBuffer[5], uint8_t foundSha, int shaIndex, uint32_t lzwChunkSize, uint8_t wasEndOfFile){
-    #pragma HLS inline
     uint32_t shiftedIndex;
     uint32_t sizeOfEndPacket;
     if (foundSha){
@@ -63,11 +62,13 @@ uint32_t fillHeaderBuffer(ap_uint<9> headerBuffer[5], uint8_t foundSha, int shaI
 
 }//fillHeaderBuffer
 
-void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput, ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1], uint32_t packetSendSize){
+void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
+                  ap_uint<9>                lzwOutputBuffer[MAXSIZE + 4 + 1],
+                  uint32_t                  packetSendSize){
 
     for(int i = 0; i < MAXSIZE + 4 + 1; i++){
-        if (i == packetSendSize) break;
-        deduplicateToOutput.write(lzwOutputBuffer[i]);
+        if (i < packetSendSize)
+            deduplicateToOutput.write(lzwOutputBuffer[i]);
     }//for
 
 
@@ -83,7 +84,7 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
     uint8_t wasEndOfFile[1] = {0};//keeps track of if the previous chunk ended with ENDOFFILE, and can be used as an inout variable
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
-        #pragma HLS pipeline
+        //#pragma HLS pipeline
 
         if (wasEndOfFile[0]){
             return;

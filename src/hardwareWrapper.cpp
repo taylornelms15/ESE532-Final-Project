@@ -62,7 +62,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);
     rabin_hw_fake(readerToRabin, rabinToSHA, rabinToLZW, numElements);
-    //sha_hw(rabinToSHA, shaToDeduplicate);
+    sha_hw_fake(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
