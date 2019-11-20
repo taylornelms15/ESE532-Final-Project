@@ -107,6 +107,35 @@ unsigned int Load_data(unsigned char * Data)
   return Bytes_read;
 }
 
+unsigned int Store_Data(uint32_t* Data, uint32_t dataSize){
+    unsigned int Bytes_written;
+#ifdef __SDSCC__
+  FIL File;
+
+  FRESULT Result = f_open(&File, linuxOutfileName, FA_WRITE);
+  Check_error(Result != FR_OK, "Could not open output file.");
+  Result = f_write(&File, Data, dataSize, &Bytes_written);
+  Check_error(Result != FR_OK, "Could not read output file.");
+  Check_error(f_close(&File) != FR_OK, "Could not close output file.");
+#else
+  FILE * File = fopen(infileName, "wb");
+  if (File == NULL){
+      printf("Could not open output file\n");
+      Exit_with_error();
+  }
+
+  Bytes_written = fwrite(Data, 1, dataSize, File);
+  if (Bytes_written < 1){
+      printf("None written, result %d\n", Bytes_written);
+      Exit_with_error();
+  }
+
+  if (fclose(File) != 0)
+    Exit_with_error();
+#endif
+    return Bytes_written;
+}//Store_Data
+
 /**
  * This function encapsulates reading the next bits of data into our buffer for hardware processing
  * It will either read from an input file, or read from the server, depending on the defines

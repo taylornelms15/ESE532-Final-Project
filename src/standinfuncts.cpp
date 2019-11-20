@@ -52,7 +52,7 @@ unsigned int PRNG(){
     nSeed = (8253729 * nSeed + 2396403);
 
     // Take the seed and return a value between 0 and 32767 (15 bits)
-    return nSeed  % 32767;
+    return (int16_t)nSeed;
 }
 
 void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate){
@@ -61,12 +61,13 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
     uint8_t foundEndOfFile = 0;
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
-        #pragma HLS pipeline
+        #pragma HLS loop_tripcount min=32000 max=200000
         //For each incoming chunk
-        if (foundEndOfFile) return;
 
         //read the input stream
         for (int i = 0; i < MAXSIZE + 1; i++){
+            #pragma HLS pipeline
+            #pragma HLS loop_tripcount min=1024 max=6144 avg=2048
             ap_uint<9> nextVal = rabinToSHA.read();
             if (nextVal == ENDOFCHUNK || nextVal == ENDOFFILE){
                 if (nextVal == ENDOFFILE) foundEndOfFile = 1;
@@ -79,11 +80,13 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //output 32 random bytes
         for (int i = 0; i < SHA256_SIZE; i++){
+            #pragma HLS pipeline
             uint8_t nextByte = (uint8_t) PRNG();
             shaToDeduplicate.write(nextByte);
 
         }//for
 
+        if (foundEndOfFile) return;
     }//for j
 
 

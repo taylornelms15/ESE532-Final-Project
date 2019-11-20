@@ -11,7 +11,7 @@
 #define COMMON_H
 
 #define MINSIZE (1 * 1024)
-#define MAXSIZE (8 * 1024)
+#define MAXSIZE (6 * 1024)
 
 #define MAXINPUTFILESIZE (200000000)//200MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
