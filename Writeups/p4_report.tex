@@ -41,10 +41,13 @@ We also compare the software run output(Golden output) with the HW run output to
 \textbf{Design space}\newline
 Rabin CDC:\newline
 
+\newline
 SHA:\newline
 
+\newline
 LZW:\newline
-
+We are currently operating with a hash table for the LZW implementation that allows for a 3x bucket-overflow past evenly-distributed on our hashed table addresses. The hash table is being implemented with $1024$ rows, which, across a potential $8k$ rows, means we are allowing for $24$ possible key-value pairs to be pulled from BRAM's and looked up at a time. 
+Given the difficulty of getting things overall to work, there have been no verifications of the sensibility of these design choices, and likely will not be until a functional product is produced overall.
 
 \newline
 
@@ -69,7 +72,7 @@ LZW:
 \textbf{Task distribution}: 
 Ritika did the SHA logic on HW implementation. 
 Nishanth did the Rabin logic on HW implementation.
-Taylor has done the LZW Compression logic on HW implementation, along with the groundwork for a better-streaming interfacing across future implementations.
+Taylor has done the LZW Compression logic on HW implementation, along with the placeholder \texttt{dataflow} implementation for future accelerated designs.
 Chunkdict is currently running on Software. 
 \newline
 
