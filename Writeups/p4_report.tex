@@ -21,12 +21,13 @@
 \textbf{Throughput}: The throughput is 10Mbps. The throughput decreased from 15 to 10 by putting rabin, SHA also in hardware because 
 Rabin: The input and output to the rabin function in the current implementation is not ideal because 
 a)It does not know the length of chunk beforehand, within a stream of 8K bytes. This means that the Rabin always has to run a full 8K cycles for every single chunk even if the chunk boundary is detected at 2K etc.
-b) Since the data input was malloc'ed it needed to use DMA SG as the data mover, which incurs a high penalty on each run. Also the idea of running Rabin in HW for each chunk and then moving it out back to PS for sending to the next stage causes a high data movement penalty across the system. However this should be overcome when we move into the Dataflow design that we have currently running but with the integration yet to be done. 
-
+b) Since the data input was malloc'ed it needed to use DMA SG as the data mover, which incurs a high penalty on each run. Also the idea of running Rabin in HW for each chunk and then moving it out back to PS for sending to the next stage causes a high data movement penalty across the system. 
+\newline\newline
+We are also moving towards a \texttt{dataflow} model to stream data between our components. However, this has involved a lot of late-game integration issues, and we are still troubleshooting these concerns. Out current \texttt{dataflow} model puts in placeholder functions for Rabin and SHA units (outputting random information for the SHA digest and using fixed chunk sizes for the Rabin chunking), and is able to achieve a higher throughput than the current implementation. We hope that this will allow for a better resultant throughput, as the movement of data will not be dependent upon CPU data movers, and will hopefully pipeline our data through the different modules sensibly.
 \newline
 
 \item%b
-\textbf{Compression status}: Current compression status for vmlinuz.tar is 44 percent for an original file size of 66MB and it compressed it to 37MB. For little prince, the compression ratio is 67 percent with the original file size of 14KB and the compressed file size 4.5KB. For a file not suitable for compression like Franklin, the compression ratio is 21 percent for an original file size of 390K and the compressed file size 308K.
+\textbf{Compression status}: Current compression status for vmlinuz.tar is 44 percent for an original file size of 66MB and it compressed it to 37MB. For little prince, the compression ratio is 67 percent with the original file size of 14KB and the compressed file size 4.5KB. For a file not suitable for deduplication like Franklin, the compression ratio is 21 percent for an original file size of 390K and the compressed file size 308K.
 \newline
 
 \item%c
@@ -35,20 +36,18 @@ We also compare the software run output(Golden output) with the HW run output to
 \newline
 
 \item%d
-\textbf{Design space}
-Rabin CDC:
+\textbf{Design space}\newline
+Rabin CDC:\newline
 
-SHA: 
-- We pipelined the main SHA loop which computes sub-chunks of 512 bits. This unrolls all the inner loops which don't have a dependency completely. 
-- Another improvement is to use the same static memory for 64 constants so that they are passed in RTL rather than sending them from PS to PL for every chunk.
-- We also partitioned most of the arrays so that simultaneous access can take place for the unrolled loops. 
-- We are streaming the data to PL which saves memory as compared when it is data copied. 
+SHA:\newline
 
-LZW:
+LZW:\newline
+
+
 \newline
 
 \item%e
-\textbf{Techniques for speedup}: We put all three components in hardware this time to increase the speed. 
+\textbf{Techniques for speedup}: We put all three components in hardware this time to increase the speed. It saves time to send data from PS to PL and then back. 
 \newline
 
 
@@ -68,7 +67,7 @@ LZW:
 \textbf{Task distribution}: 
 Ritika did the SHA logic on HW implementation. 
 Nishanth did the Rabin logic on HW implementation.
-Taylor has done the LZW Compression logic on HW implementation.
+Taylor has done the LZW Compression logic on HW implementation, along with the groundwork for a better-streaming interfacing across future implementations.
 Chunkdict is currently running on Software. 
 \newline
 
