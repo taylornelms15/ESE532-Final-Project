@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{appendix}
+\usepackage{graphicx}
+
+
+\title{ESE532 Project P4 Report - Group}
+\author{Ritika Gupta, Taylor Nelms, and Nishanth Shyamkumar}
+
+\begin{document}
+
+\maketitle
+
+
+\section{Deduplication and compression}
+\begin{enumerate}
+\item%a
+\textbf{Throughput}: The throughput is 10Mbps. The throughput decreased from 15 to 10 by putting rabin, SHA also in hardware because 
+\newline
+
+\item%b
+\textbf{Compression status}: Current comporession status for vmlinuz.tar is 44% for an orginal file size of 66MB and it compressed it to 37MB. For little prince, the compression ratio is 67% with the original file size of 14KB and the compressed file size 4.5KB. For a file not stuitable for compression like franklin, the compression ratio is 21%  for an original file size of 390K and the compressed file size 308K.
+\newline
+
+\item%c
+\textbf{Validations}: We use decoder to produce the uncompressed file and then compare it with the original uncompressed file and they match.
+\newline
+
+\item%d
+\textbf{Design space}
+\newline
+
+\item%e
+\textbf{Techniques for speedup}: We put all three components in harwdare this time to increase the speed. It saves time to send data from PS to PL and then back. 
+\newline
+
+
+\item%f
+\textbf{Perfomance model}
+\newline
+
+
+\item%b
+\textbf{Task distribution}: 
+\newline
+
+\section{Code}
+
+Included in different turn-in location.
+
+\section{Binaries}
+
+Included in different turn-in location.
+
+
+\begin{appendices}
+%\section{2m Filter.cpp}\label{2m}
+%\lstinputlisting[language=C]{code/Filter.cpp}
+%\section{1h mmult\_accel.cpp}\label{1hB}
+%\lstinputlisting[language=C]{code/mmult_accel.cpp}
+%\section{1h mmult\_accel.h}\label{1hC}
+%\lstinputlisting[language=C]{code/mmult_accel.h}
+
+
+\end{appendices}
+
+
+
+
+
+\end{document}
