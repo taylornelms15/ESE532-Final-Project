@@ -28,7 +28,7 @@ extern "C"
 #else
 #define MEASURING_LATENCY 0
 #endif
-//#define READING_FROM_SERVER 1
+#define READING_FROM_SERVER 1
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -39,7 +39,7 @@ extern "C"
 uint8_t* buf;
 size_t bytes;
 static const char infileName[] = "C:/Users/rgjus/Desktop/test.txt";
-static const char outfileName[] = "C:/Users/rgjus/Desktop/output.txt";
+static const char outfileName[] = "compress.dat";
 
 extern unsigned long long mod_table[256];
 extern unsigned long long out_table[256];
