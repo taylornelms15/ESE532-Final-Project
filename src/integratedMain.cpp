@@ -38,8 +38,8 @@
 
 static const char hostInfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklinlong.txt";
 static const char hostOutfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklinlong.compress";
-static const char deviceInfileName[] = "vmlinuz.tar";
-static const char deviceOutfileName[] = "vmlinuz.dat";
+static const char deviceInfileName[] = "under.txt";
+static const char deviceOutfileName[] = "under.dat";
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -154,7 +154,10 @@ unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
 #else
   FIL File;
 
-  FRESULT Result = f_open(&File, deviceOutfileName, FA_WRITE);
+  FRESULT Result = f_open(&File, deviceOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
+  if (Result != FR_OK){
+    printf("Output code %d\n", Result);
+  }
   Check_error(Result != FR_OK, "Could not open output file.");
   Result = f_write(&File, Data, dataSize, &Bytes_written);
   Check_error(Result != FR_OK, "Could not read output file.");
