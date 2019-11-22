@@ -43,8 +43,12 @@ Rabin CDC:\newline
 
 \newline
 SHA:\newline
-
+ We pipelined the main SHA loop which computes sub-chunks of 512 bits. This unrolls all the inner loops which don't have a dependency completely. 
+ Another improvement is to use the same static memory for 64 constants so that they are passed in RTL rather than sending them from PS to PL for every chunk.
+ We also partitioned most of the arrays so that simultaneous access can take place for the unrolled loops. 
+ We are streaming the data to PL which saves memory as compared when it is data copied. 
 \newline
+
 LZW:\newline
 We are currently operating with a hash table for the LZW implementation that allows for a 3x bucket-overflow past evenly-distributed on our hashed table addresses. The hash table is being implemented with $1024$ rows, which, across a potential $8k$ rows, means we are allowing for $24$ possible key-value pairs to be pulled from BRAM's and looked up at a time. 
 Given the difficulty of getting things overall to work, there have been no verifications of the sensibility of these design choices, and likely will not be until a functional product is produced overall.
