@@ -19,32 +19,53 @@
 \begin{enumerate}
 \item%a
 \textbf{Throughput}: The throughput is 10Mbps. The throughput decreased from 15 to 10 by putting rabin, SHA also in hardware because 
+Rabin: The input and output to the rabin function in the current implementation is not ideal because 
+a)It does not know the length of chunk beforehand, within a stream of 8K bytes. This means that the Rabin always has to run a full 8K cycles for every single chunk even if the chunk boundary is detected at 2K etc.
+b) Since the data input was malloc'ed it needed to use DMA SG as the data mover, which incurs a high penalty on each run. Also the idea of running Rabin in HW for each chunk and then moving it out back to PS for sending to the next stage causes a high data movement penalty across the system. However this should be overcome when we move into the Dataflow design that we have currently running but with the integration yet to be done. 
+
 \newline
 
 \item%b
-\textbf{Compression status}: Current comporession status for vmlinuz.tar is 44% for an orginal file size of 66MB and it compressed it to 37MB. For little prince, the compression ratio is 67% with the original file size of 14KB and the compressed file size 4.5KB. For a file not stuitable for compression like franklin, the compression ratio is 21%  for an original file size of 390K and the compressed file size 308K.
+\textbf{Compression status}: Current compression status for vmlinuz.tar is 44 percent for an original file size of 66MB and it compressed it to 37MB. For little prince, the compression ratio is 67 percent with the original file size of 14KB and the compressed file size 4.5KB. For a file not suitable for compression like Franklin, the compression ratio is 21 percent for an original file size of 390K and the compressed file size 308K.
 \newline
 
 \item%c
-\textbf{Validations}: We use decoder to produce the uncompressed file and then compare it with the original uncompressed file and they match.
+\textbf{Validations}: We use decoder to produce the uncompressed file and then compare it with the original uncompressed file and they match. 
+We also compare the software run output(Golden output) with the HW run output to check for validity. 
 \newline
 
 \item%d
 \textbf{Design space}
+Rabin CDC:
+
+SHA:
+
+LZW:
 \newline
 
 \item%e
-\textbf{Techniques for speedup}: We put all three components in harwdare this time to increase the speed. It saves time to send data from PS to PL and then back. 
+\textbf{Techniques for speedup}: We put all three components in hardware this time to increase the speed. It saves time to send data from PS to PL and then back. 
 \newline
 
 
 \item%f
 \textbf{Perfomance model}
+Rabin CDC:
+
+
+SHA:
+
+
+LZW:
 \newline
 
 
 \item%b
 \textbf{Task distribution}: 
+Ritika did the SHA logic on HW implementation. 
+Nishanth did the Rabin logic on HW implementation.
+Taylor has done the LZW Compression logic on HW implementation.
+Chunkdict is currently running on Software. 
 \newline
 
 \section{Code}
@@ -70,5 +91,11 @@ Included in different turn-in location.
 
 
 
-
+\end{enumerate}
 \end{document}
+
+
+
+
+
+
