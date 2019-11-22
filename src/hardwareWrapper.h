@@ -7,7 +7,6 @@
 #define HARDWARE_WRAPPER_H
 
 #include "common.h"
-#include "ap_int.h"
 #include <hls_stream.h>
 
 /**

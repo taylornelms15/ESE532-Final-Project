@@ -275,7 +275,7 @@ void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uin
 
 //###############
 //BELOW: functions for development in conjunction with direct software calls
-//Kept for compatability reasons sort of, also for reference
+//Kept for compatibility reasons sort of, also for reference
 //###############
 
 void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::stream< ap_uint<9> > &inHW){

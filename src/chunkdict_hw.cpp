@@ -188,14 +188,3 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 }//indexForShaValue_HW
 
 
-/**
- * Likely unused
- */
-void resetTable_HW(uint8_t tableLocation[SHA256TABLESIZE]){
-    for (int i = 0; i < SHA256TABLESIZE; i++){
-        tableLocation[i] = 0xFF;
-    }
-}//resetTable
-
-
-

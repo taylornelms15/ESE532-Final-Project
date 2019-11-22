@@ -6,8 +6,6 @@
 
 #include "standinfuncts.h"
 
-static unsigned int nSeed = 5323;
-
 #define FAKECHUNKSIZE (1024 * 3)//3k fake chunk size
 
 void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< ap_uint<9> > &rabinToLZW, uint32_t numElements){
@@ -23,7 +21,7 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
 
     int numDivisionsMarked = 0;
 
-    for(int i = 0; i < INBUFFER_SIZE; i++){
+    for(int i = 0; i < INBUFFER_SIZE + 1; i++){
         #pragma HLS pipeline II=2
         ap_uint<9> nextVal = readerToRabin.read();
 
@@ -42,23 +40,25 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
 
 }//rabin_hw_fake
 
-unsigned int PRNG(){
+int16_t PRNG(uint32_t nSeed[1]){
     #pragma HLS inline
 
     // Take the current seed and generate a new value from it
     // Due to our use of large constants and overflow, it would be
     // very hard for someone to predict what the next number is
     // going to be from the previous one.
-    nSeed = (8253729 * nSeed + 2396403);
+    nSeed[0] = (8253729 * nSeed[0] + 2396403);
 
     // Take the seed and return a value between 0 and 32767 (15 bits)
-    return (int16_t)nSeed;
+    return (int16_t)(nSeed[0]);
 }
 
 void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate){
 
     uint8_t chunkBuffer[MAXSIZE];
     uint8_t foundEndOfFile = 0;
+    uint32_t nSeed[1] = {5323};//prng seed
+    #pragma HLS array_partition variable=nSeed
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
         #pragma HLS loop_tripcount min=32000 max=200000
@@ -80,8 +80,8 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //output 32 random bytes
         for (int i = 0; i < SHA256_SIZE; i++){
-            #pragma HLS pipeline II=2
-            uint8_t nextByte = (uint8_t) PRNG();
+            #pragma HLS pipeline II=3
+            uint8_t nextByte = (uint8_t) PRNG(nSeed);
             shaToDeduplicate.write(nextByte);
 
         }//for
