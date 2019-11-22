@@ -23,7 +23,9 @@ Rabin: The input and output to the rabin function in the current implementation 
 a)It does not know the length of chunk beforehand, within a stream of 8K bytes. This means that the Rabin always has to run a full 8K cycles for every single chunk even if the chunk boundary is detected at 2K etc.
 b) Since the data input was malloc'ed it needed to use DMA SG as the data mover, which incurs a high penalty on each run. Also the idea of running Rabin in HW for each chunk and then moving it out back to PS for sending to the next stage causes a high data movement penalty across the system. 
 \newline\newline
-We are also moving towards a \texttt{dataflow} model to stream data between our components. However, this has involved a lot of late-game integration issues, and we are still troubleshooting these concerns. Out current \texttt{dataflow} model puts in placeholder functions for Rabin and SHA units (outputting random information for the SHA digest and using fixed chunk sizes for the Rabin chunking), and is able to achieve a higher throughput than the current implementation. We hope that this will allow for a better resultant throughput, as the movement of data will not be dependent upon CPU data movers, and will hopefully pipeline our data through the different modules sensibly.
+We are also moving towards a \texttt{dataflow} model to stream data between our components. However, this has involved a lot of late-game integration issues, and we are still troubleshooting these concerns. 
+Our current \texttt{dataflow} model puts in placeholder functions for Rabin and SHA units (outputting random information for the SHA digest and using fixed chunk sizes for the Rabin chunking), and is able to achieve a higher throughput than the current implementation. 
+We hope that this will allow for a better resultant throughput, as the movement of data will not be dependent upon CPU data movers, and will hopefully pipeline our data through the different modules sensibly.
 \newline
 
 \item%b
