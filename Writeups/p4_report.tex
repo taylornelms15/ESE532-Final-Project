@@ -38,13 +38,17 @@ We also compare the software run output(Golden output) with the HW run output to
 \textbf{Design space}
 Rabin CDC:
 
-SHA:
+SHA: 
+- We pipelined the main SHA loop which computes sub-chunks of 512 bits. This unrolls all the inner loops which don't have a dependency completely. 
+- Another improvement is to use the same static memory for 64 constants so that they are passed in RTL rather than sending them from PS to PL for every chunk.
+- We also partitioned most of the arrays so that simultaneous access can take place for the unrolled loops. 
+- We are streaming the data to PL which saves memory as compared when it is data copied. 
 
 LZW:
 \newline
 
 \item%e
-\textbf{Techniques for speedup}: We put all three components in hardware this time to increase the speed. It saves time to send data from PS to PL and then back. 
+\textbf{Techniques for speedup}: We put all three components in hardware this time to increase the speed. 
 \newline
 
 
