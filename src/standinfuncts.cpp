@@ -21,7 +21,7 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
 
     int numDivisionsMarked = 0;
 
-    for(int i = 0; i < INBUFFER_SIZE + 1; i++){
+    for(int i = 0; i < INBUFFER_SIZE + MAX_CHUNK_NUM + 1; i++){//one for each incoming byte + one for each ENDOFCHUNK + one for the ENDOFFILE
         #pragma HLS pipeline II=2
         ap_uint<9> nextVal = readerToRabin.read();
 
