@@ -80,7 +80,7 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //output 32 random bytes
         for (int i = 0; i < SHA256_SIZE; i++){
-            #pragma HLS pipeline II=3
+            #pragma HLS pipeline II=2
             uint8_t nextByte = (uint8_t) PRNG(nSeed);
             shaToDeduplicate.write(nextByte);
 
