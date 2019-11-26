@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 
-#include "common.h"
+//#include "common.h"
 #include "hardwareWrapper.h"
 #include "chunkdict_hw.h"
 
@@ -33,8 +33,8 @@
 #endif
 
 
-static const char infileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.txt";
-static const char outfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/Franklin.dat";
+static const char infileName[] = "C:/Users/rgjus/Desktop/test.txt";
+static const char outfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
 static const char linuxInfileName[] = "linux.tar";
 static const char linuxOutfileName[] = "linux.dat";
 
