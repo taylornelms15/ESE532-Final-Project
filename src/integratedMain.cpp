@@ -12,9 +12,9 @@
 
 //#include "common.h"
 #include "hardwareWrapper.h"
-#include "chunkdict_hw.h"
 
 #define READING_FROM_SERVER 0
+//#define __linux__
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -22,7 +22,10 @@
 
 
 #ifdef __SDSCC__
+#ifdef __linux__
+#else
 #include <ff.h>
+#endif
 #include <sds_lib.h>
 #endif
 
@@ -33,10 +36,12 @@
 #endif
 
 
-static const char infileName[] = "C:/Users/rgjus/Desktop/test.txt";
-static const char outfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
-static const char linuxInfileName[] = "linux.tar";
-static const char linuxOutfileName[] = "linux.dat";
+static const char hostInfileName[] = "C:/Users/rgjus/Desktop/test.txt";
+static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
+static const char deviceInfileName[] = "linux.tar";
+static const char deviceOutfileName[] = "linux.dat";
+
+void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
 void Check_error(int Error, const char * Message)
 {
@@ -75,21 +80,10 @@ void Free(uint8_t* Frame){
 #endif
 }
 
-unsigned int Load_data(unsigned char * Data)
-{
-  unsigned int Size = MAXINPUTFILESIZE;
+unsigned int Load_data_linux(unsigned char*  Data, const char* fileName){
   unsigned int Bytes_read;
-
-#ifdef __SDSCC__
-  FIL File;
-
-  FRESULT Result = f_open(&File, linuxInfileName, FA_READ);
-  Check_error(Result != FR_OK, "Could not open input file.");
-  Result = f_read(&File, Data, Size, &Bytes_read);
-  Check_error(Result != FR_OK, "Could not read input file.");
-  Check_error(f_close(&File) != FR_OK, "Could not close input file.");
-#else
-  FILE * File = fopen(infileName, "rb");
+  unsigned int Size = MAXINPUTFILESIZE;
+  FILE * File = fopen(fileName, "rb");
   if (File == NULL){
       printf("Could not open input file\n");
       Exit_with_error();
@@ -103,9 +97,77 @@ unsigned int Load_data(unsigned char * Data)
 
   if (fclose(File) != 0)
     Exit_with_error();
+  return Bytes_read;
+}
+
+unsigned int Load_data(unsigned char * Data)
+{
+  unsigned int Size = MAXINPUTFILESIZE;
+  unsigned int Bytes_read;
+
+#ifdef __SDSCC__
+#ifdef __linux__
+  Bytes_read = Load_data_linux(Data, deviceInfileName);
+#else
+
+  FIL File;
+
+  FRESULT Result = f_open(&File, deviceInfileName, FA_READ);
+  if (Result != FR_OK){
+    printf("File open: Result %d\n", Result);
+  }
+  Check_error(Result != FR_OK, "Could not open input file (SDSCC).");
+  Result = f_read(&File, Data, Size, &Bytes_read);
+  Check_error(Result != FR_OK, "Could not read input file.");
+  Check_error(f_close(&File) != FR_OK, "Could not close input file.");
+#endif
+#else
+  Bytes_read = Load_data_linux(Data, hostInfileName);
 #endif
   return Bytes_read;
 }
+
+unsigned int Store_Data_linux(uint8_t* Data, uint32_t dataSize, const char* fileName){
+  unsigned int Bytes_written;
+  FILE * File = fopen(fileName, "wb");
+  if (File == NULL){
+      printf("Could not open output file\n");
+      Exit_with_error();
+  }
+
+  Bytes_written = fwrite(Data, 1, dataSize, File);
+  if (Bytes_written < 1){
+      printf("None written, result %d\n", Bytes_written);
+      Exit_with_error();
+  }
+
+  if (fclose(File) != 0)
+    Exit_with_error();
+  return Bytes_written;
+}
+
+unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
+  unsigned int Bytes_written;
+#ifdef __SDSCC__
+#ifdef __linux__
+  Bytes_written = Store_Data_linux(Data, dataSize, deviceOutfileName);
+#else
+  FIL File;
+
+  FRESULT Result = f_open(&File, deviceOutfileName, FA_WRITE | FA_CREATE_ALWAYS);
+  if (Result != FR_OK){
+    printf("Output code %d\n", Result);
+  }
+  Check_error(Result != FR_OK, "Could not open output file.");
+  Result = f_write(&File, Data, dataSize, &Bytes_written);
+  Check_error(Result != FR_OK, "Could not read output file.");
+  Check_error(f_close(&File) != FR_OK, "Could not close output file.");
+#endif
+#else
+  Bytes_written = Store_Data_linux(Data, dataSize, hostOutfileName);
+#endif
+  return Bytes_written;
+}//Store_Data
 
 /**
  * This function encapsulates reading the next bits of data into our buffer for hardware processing
@@ -120,6 +182,10 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer){
 uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fileOffset, uint32_t fileSize){
     uint32_t remainingSize = fileSize - (fileOffset + 1);
     if (remainingSize == 0) return 0;
+    else if (remainingSize > INBUFFER_SIZE && (remainingSize % INBUFFER_SIZE < MINSIZE)){
+        memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize / 2);
+        return remainingSize / 2;
+    }//need to have a smaller buffer this time
     else if (remainingSize < INBUFFER_SIZE){
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize);
         return remainingSize;
@@ -133,6 +199,14 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fil
 
 
 int main(int argc, char* argv[]){
+
+    #ifdef __SDSCC__//mount SD card
+    #ifndef __linux__
+    FATFS FS;
+    Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
+    #endif
+    #endif
+
 
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
     printf("Allocated chunkTable at %p\n", chunkTable);
@@ -159,25 +233,31 @@ int main(int argc, char* argv[]){
     while(true){
         uint32_t nextBufferSize =
         #if READING_FROM_SERVER
-                readDataIntoBuffer(hwBuffer);
+            readDataIntoBuffer(hwBuffer);
         #else
-                readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
-                fileOffset += nextBufferSize;
+            readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
+            fileOffset += nextBufferSize;
         #endif
         if (nextBufferSize == 0){
             break;
         }
+        printf("Starting processing on buffer of size %d\n", nextBufferSize);
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
+        printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
 
     #if MEASURING_LATENCY
     unsigned long long overallEnd = sds_clock_counter();
-    printf("Overall latency %lld\n", overallEnd - overallStart;
+    printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
+
+    Store_Data(output, outputOffset + 1);
+    printf("Stored data successfully\n");
 
     Free(chunkTable);
     Free(hwBuffer);
+    Free(output);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #endif

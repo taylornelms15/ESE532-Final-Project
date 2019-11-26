@@ -7,7 +7,6 @@
 #define HARDWARE_WRAPPER_H
 
 #include "common.h"
-#include "ap_int.h"
 #include <hls_stream.h>
 
 /**
@@ -20,11 +19,10 @@
  * @param numElements Number of elements we'll read if we don't read the whole buffer (only relevant for last section)
  * @return Number of bytes written by this iteration of processing
  */
-#pragma SDS data copy(input[0:INBUFFER_SIZE])
-#pragma SDS data copy(output)//not sure of length, trying to avoid errors because we did not write enough
+#pragma SDS data copy(input[0:INBUFFER_SIZE], output[0:OUTBUFFER_SIZE])
 #pragma SDS data zero_copy(tableLocation[0:SHA256TABLESIZE])
 #pragma SDS data access_pattern(input:SEQUENTIAL, output:SEQUENTIAL, tableLocation:RANDOM)
-#pragma SDS data mem_attribute(input:PHYSICAL_CONTIGUOUS, output:PHYSICAL_CONTIGUOUS, tableLocation:NON_PHYSICAL_CONTIGUOUS)
+#pragma SDS data mem_attribute(input:PHYSICAL_CONTIGUOUS, output:PHYSICAL_CONTIGUOUS, tableLocation:PHYSICAL_CONTIGUOUS)
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
                        uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements);
 

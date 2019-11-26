@@ -125,7 +125,7 @@ uint8_t writeToTable(const ap_uint<KEYLEN> key, const ap_uint<ROWBITS> val,
     int i;
     uint8_t freeSlot = HDEPTH;
     //want position of rightmost 0 bit of validityMask
-    for(i = HDEPTH - 1; i >=0; i--){
+    findFreeTableRowLoop:for(i = HDEPTH - 1; i >=0; i--){
         #pragma HLS unroll
         if (!(validityMask & (1 << i))){
             freeSlot = i;
@@ -154,13 +154,13 @@ ap_uint<ROWBITS> readFromTable(ap_uint<KEYLEN> key, ap_uint<HDEPTH> validityEntr
 
     ap_uint<HRBITS> potentialValues[HDEPTH];
     #pragma HLS ARRAY_RESHAPE variable=potentialValues block factor=2 dim=1
-    for(uint8_t i = 0; i < HDEPTH; i++){
+    cacheTableRowLoop:for(uint8_t i = 0; i < HDEPTH; i++){
         #pragma HLS unroll
         ap_uint<HRBITS> candidate = hashTable[i][hashedKey];
         potentialValues[i] = candidate;
     }//for
     
-    for(uint8_t i = 0; i < HDEPTH; i++){
+    findMatchingEntryLoop:for(uint8_t i = 0; i < HDEPTH; i++){
 		#pragma HLS unroll
         ap_uint<KEYLEN> keyCandidate = (ap_uint<KEYLEN>)(potentialValues[i] >> ROWBITS);
         if (keyCandidate == key && (validityEntry & (1 << i))){
@@ -221,7 +221,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 
     ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
-		#pragma HLS loop_tripcount min=1024 max=8192 avg=4096
+		#pragma HLS loop_tripcount min=1024 max=6144 avg=2048
         #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
         if (readChar > 255){
@@ -275,7 +275,7 @@ void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uin
 
 //###############
 //BELOW: functions for development in conjunction with direct software calls
-//Kept for compatability reasons sort of, also for reference
+//Kept for compatibility reasons sort of, also for reference
 //###############
 
 void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::stream< ap_uint<9> > &inHW){

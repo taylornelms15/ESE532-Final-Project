@@ -7,7 +7,6 @@
 #define LZW_HW_H
 
 #include "common.h"
-#include "ap_int.h"
 #include <hls_stream.h>
 #define MAXCHUNKLENGTH (MAXSIZE)
 

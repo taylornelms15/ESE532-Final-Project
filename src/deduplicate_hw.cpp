@@ -16,6 +16,7 @@ uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, ap_uint<9> buf
     #pragma HLS inline
     ap_uint<9> endByte = ENDOFCHUNK;
     for(uint32_t i = 0; i < MAXSIZE + 1; i++){
+        #pragma HLS pipeline
         ap_uint<9> nextVal = lzwToDeduplicate.read();
         if (nextVal == ENDOFCHUNK || nextVal == ENDOFFILE){
             buffer[i] = nextVal;
@@ -63,11 +64,14 @@ uint32_t fillHeaderBuffer(ap_uint<9> headerBuffer[5], uint8_t foundSha, int shaI
 
 }//fillHeaderBuffer
 
-void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput, ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1], uint32_t packetSendSize){
+void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
+                  ap_uint<9>                lzwOutputBuffer[MAXSIZE + 4 + 1],
+                  uint32_t                  packetSendSize){
 
-    for(int i = 0; i < MAXSIZE + 4 + 1; i++){
-        if (i == packetSendSize) break;
-        deduplicateToOutput.write(lzwOutputBuffer[i]);
+    for(uint32_t i = 0; i < MAXSIZE + 4 + 1; i++){
+        #pragma HLS pipeline
+        if (i < packetSendSize)
+            deduplicateToOutput.write(lzwOutputBuffer[i]);
     }//for
 
 
@@ -83,14 +87,18 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
     uint8_t wasEndOfFile[1] = {0};//keeps track of if the previous chunk ended with ENDOFFILE, and can be used as an inout variable
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
-        #pragma HLS pipeline
 
         if (wasEndOfFile[0]){
             return;
         }//if the last run was our final one
 
+        //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
+        uint32_t packetSize = readFromLzw(lzwToDeduplicate, lzwOutputBuffer + 4, wasEndOfFile);//don't bother giving it the first 4 header bytes
+        uint32_t lzwChunkSize = packetSize - 5;//write this value (modified) to the header
+
         //read in our SHA value
         for (uint8_t i = 0; i < SHA256_SIZE; i++){
+            #pragma HLS unroll
             uint8_t nextVal = shaToDeduplicate.read();
             shaBuffer[i] = nextVal;
         }//for
@@ -100,9 +108,6 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         if (shaIndex < 0) foundSha = 0;
         else foundSha = 1;
         
-        //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
-        uint32_t packetSize = readFromLzw(lzwToDeduplicate, lzwOutputBuffer + 4, wasEndOfFile);//don't bother giving it the first 4 header bytes
-        uint32_t lzwChunkSize = packetSize - 5;//write this value (modified) to the header
 
         //fill in the header appropriately
         uint32_t packetSendSize = fillHeaderBuffer(lzwOutputBuffer, foundSha, shaIndex, lzwChunkSize, wasEndOfFile[0]);
@@ -114,3 +119,4 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
 
 
 }//deduplicate_hw
+

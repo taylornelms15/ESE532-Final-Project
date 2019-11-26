@@ -65,23 +65,23 @@ uint32_t getDramOffset(ap_uint<HASHBITS> hashVal){
  */
 void memcpyDRAM(uint8_t dst[DRAM_PULL_SIZE], const uint8_t src[DRAM_PULL_SIZE]){
     #pragma HLS inline
-    memcpydram:for(int i = 0; i < DRAM_PULL_SIZE / 4; i++){
+    memcpydram:for(int i = 0; i < DRAM_PULL_SIZE; i++){
         #pragma HLS unroll
-    	((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+    	dst[i] = src[i];
     }
 }
 void memcpySha(uint8_t dst[SHA256_SIZE], const uint8_t src[SHA256_SIZE]){
     #pragma HLS inline
-    memcpysha:for(int i = 0; i < SHA256_SIZE / 4; i++){
+    memcpysha:for(int i = 0; i < SHA256_SIZE; i++){
         #pragma HLS unroll
-        ((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+        dst[i] = src[i];
     }
 }
 void memcpyRow(uint8_t dst[BYTES_PER_ROW], const uint8_t src[BYTES_PER_ROW]){
     #pragma HLS inline
-    memcpyrow:for(int i = 0; i < BYTES_PER_ROW / 4; i++){
+    memcpyrow:for(int i = 0; i < BYTES_PER_ROW; i++){
         #pragma HLS unroll
-    	((uint32_t*) dst)[i] = ((uint32_t*)src)[i];
+    	dst[i] = src[i];
     }
 }
 void memcpy4F(uint8_t* dst, const uint32_t src){
@@ -186,16 +186,5 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 
     return 0;
 }//indexForShaValue_HW
-
-
-/**
- * Likely unused
- */
-void resetTable_HW(uint8_t tableLocation[SHA256TABLESIZE]){
-    for (int i = 0; i < SHA256TABLESIZE; i++){
-        tableLocation[i] = 0xFF;
-    }
-}//resetTable
-
 
 

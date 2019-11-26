@@ -23,7 +23,6 @@ extern "C"{
 
 
 
-
 void fillRandom(uint8_t* dst, int size){
     for(int i = 0; i < size; i++){
     	uint8_t nextRand = (uint8_t) rand();
@@ -38,6 +37,7 @@ void pullFromTestSha(int index, const uint8_t* randomTable, uint8_t* dst){
 	}
 }
 
+#define CHUNKS_TO_TEST 2048
 #define NUMTESTSHA 256
 
 int main(int argc, char* argv[]){
@@ -49,12 +49,13 @@ int main(int argc, char* argv[]){
     printf("mallocs complete\n");
     fillRandom(shaToPullFrom, SHA256_SIZE * NUMTESTSHA);
     printf("fillRandom complete\n");
-    resetTable_HW(tableLocation);
+    memset(tableLocation, 0xff, SHA256TABLESIZE);
+    //resetTable_HW(tableLocation);
     printf("resetTableHW complete\n");
     resetTable();
     printf("resetTable complete\n");
 
-    for(int i = 0; i < 1024; i++){
+    for(int i = 0; i < CHUNKS_TO_TEST; i++){
     	uint8_t thisSha[SHA256_SIZE];
     	int thisIndex = rand() % NUMTESTSHA;
     	pullFromTestSha(thisIndex, shaToPullFrom, thisSha);

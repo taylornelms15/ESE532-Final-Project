@@ -3,15 +3,21 @@
  * @author Taylor Nelms
  * A header file for access by multiple other source files, for various purposes
  */
-#include <stdint.h>
+#ifndef COMMON_H
+#define COMMON_H
+//#include <stdint.h>
+typedef unsigned char uint8_t;
+typedef unsigned int uint32_t;
+typedef int int32_t;
+typedef short int16_t;
+typedef unsigned short uint16_t;
 
 #define HALF_ENABLE_CPP11_CMATH 0
 
-#ifndef COMMON_H
-#define COMMON_H
+#include "ap_int.h"
 
 #define MINSIZE (1 * 1024)
-#define MAXSIZE (8 * 1024)
+#define MAXSIZE (6 * 1024)
 
 #define MAXINPUTFILESIZE (200000000)//200MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
