@@ -38,8 +38,8 @@
 
 static const char hostInfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/FranklinLong.txt";
 static const char hostOutfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/FranklinLong.compress";
-static const char deviceInfileName[] = "under.txt";
-static const char deviceOutfileName[] = "under.dat";
+static const char deviceInfileName[] = "vmlinuz.tar";
+static const char deviceOutfileName[] = "vmlinuz.dat";
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -250,7 +250,7 @@ int main(int argc, char* argv[]){
             break;
         }
         printf("%d\tStarting processing on buffer of size %d\n", curiteration, nextBufferSize);
-        printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
+        //printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
         printf("%d\tProcessed buffer, ending size %d\n", curiteration, hwOutputSize);
