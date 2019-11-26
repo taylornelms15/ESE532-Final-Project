@@ -270,12 +270,12 @@ int main(int argc, char* argv[]){
     Free(fileBuffer);
 #endif
     char diff_str[200];
- /*   sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
+    sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
     int ret = system(diff_str);
     printf("diff_str : %s\n", diff_str);
     printf("ret: %d\n", ret);
-*/
-    return 0;
+
+    return ret;
 }//main
 
 

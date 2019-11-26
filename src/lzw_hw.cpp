@@ -125,7 +125,7 @@ uint8_t writeToTable(const ap_uint<KEYLEN> key, const ap_uint<ROWBITS> val,
     int i;
     uint8_t freeSlot = HDEPTH;
     //want position of rightmost 0 bit of validityMask
-    for(i = HDEPTH - 1; i >=0; i--){
+    findFreeTableRowLoop:for(i = HDEPTH - 1; i >=0; i--){
         #pragma HLS unroll
         if (!(validityMask & (1 << i))){
             freeSlot = i;
@@ -154,13 +154,13 @@ ap_uint<ROWBITS> readFromTable(ap_uint<KEYLEN> key, ap_uint<HDEPTH> validityEntr
 
     ap_uint<HRBITS> potentialValues[HDEPTH];
     #pragma HLS ARRAY_RESHAPE variable=potentialValues block factor=2 dim=1
-    for(uint8_t i = 0; i < HDEPTH; i++){
+    cacheTableRowLoop:for(uint8_t i = 0; i < HDEPTH; i++){
         #pragma HLS unroll
         ap_uint<HRBITS> candidate = hashTable[i][hashedKey];
         potentialValues[i] = candidate;
     }//for
     
-    for(uint8_t i = 0; i < HDEPTH; i++){
+    findMatchingEntryLoop:for(uint8_t i = 0; i < HDEPTH; i++){
 		#pragma HLS unroll
         ap_uint<KEYLEN> keyCandidate = (ap_uint<KEYLEN>)(potentialValues[i] >> ROWBITS);
         if (keyCandidate == key && (validityEntry & (1 << i))){
@@ -217,18 +217,19 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     uint16_t oidx = 0;
     ///keeps track of how many records we've written
     uint16_t numWritten = 0;
+    int endingByte = ENDOFCHUNK;
 
     ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
-		#pragma HLS loop_tripcount min=1024 max=8192 avg=4096
+		#pragma HLS loop_tripcount min=1024 max=6144 avg=2048
         #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
         if (readChar > 255){
+            endingByte = (int)readChar;//either ENDOFCHUNK or ENDOFFILE
             oidx += writeToOutput(curTableRow, output);
             numWritten++;
 
-            break;
-            //return oidx;//TODO: don't return, break and reset validity table...?
+            break;//effectively, the return function; next invocation of this method will do the necessary resets
         }//if end-of-stream value
         else{
             uint8_t curChar = (uint8_t)readChar;
@@ -254,11 +255,28 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     	output.write(currentOverflow);
     	oidx += 1;//not counting stop byte in our oidx
     }
-    output.write(0x100);
 
-    return oidx + 4;
+    return endingByte;
+    //output.write(0x100);
+    //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
 
 }//lzwCompress
+
+void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uint<9> > &lzwToDeduplicate){
+    for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
+        //#pragma HLS pipeline
+        int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
+        lzwToDeduplicate.write((ap_uint<9>) endingByte);
+        if (endingByte == ENDOFFILE){
+            return;
+        }
+    }
+}
+
+//###############
+//BELOW: functions for development in conjunction with direct software calls
+//Kept for compatibility reasons sort of, also for reference
+//###############
 
 void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::stream< ap_uint<9> > &inHW){
 	for(int i = 0; i < numElements; i++){

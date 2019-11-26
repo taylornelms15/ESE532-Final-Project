@@ -3,33 +3,33 @@
  * @author Taylor Nelms
  * A header file for access by multiple other source files, for various purposes
  */
-#include <stdint.h>
+#ifndef COMMON_H
+#define COMMON_H
+//#include <stdint.h>
+typedef unsigned char uint8_t;
+typedef unsigned int uint32_t;
+typedef int int32_t;
+typedef short int16_t;
+typedef unsigned short uint16_t;
 
 #define HALF_ENABLE_CPP11_CMATH 0
 
-#ifndef COMMON_H
-#define COMMON_H
+#include "ap_int.h"
 
 #define MINSIZE (1 * 1024)
-#define MAXSIZE (8 * 1024)
+#define MAXSIZE (6 * 1024)
 
-#define MAXINPUTFILESIZE (1 << 28)//256MB
+#define MAXINPUTFILESIZE (200000000)//200MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
-#define MAXPKTSIZE 4096
-#define HEADER 2
+#define INBUFFER_SIZE 2000000 //2MB incoming buffer
+#define OUTBUFFER_SIZE (INBUFFER_SIZE)
 
-//#define HWIMPL
+#define MAX_CHUNKS_IN_HW_BUFFER ((INBUFFER_SIZE + 1) / MINSIZE)
 
-#ifdef HWIMPL
-	#define USING_LZW_HW
-	#define USING_RABIN_HW
-#endif
-
-#ifdef HWIMPL
-	#define USING_CHUNKDICT_HW
-#endif
-
+//Codes for use with 9-bit streams to denote the end of the chunk and/or the end of the file
+#define ENDOFCHUNK  256
+#define ENDOFFILE   257
 
 //Chunk dictionary in HW
 #define SHA256_SIZE 32//32-byte digest
@@ -49,4 +49,3 @@
 
 
 #endif
-
