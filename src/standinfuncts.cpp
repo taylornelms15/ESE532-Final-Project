@@ -13,11 +13,20 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
     int overflowAmount = numElements % FAKECHUNKSIZE;
     int numDivisions;
     if (overflowAmount < MINSIZE){
+            numDivisions = (numElements / FAKECHUNKSIZE) - 2;
+        }//if we'd have too small a last chunk
+        else{
+            numDivisions = (numElements / FAKECHUNKSIZE) - 1;
+        }//if we'd have a bearable last chunk
+
+#if 0
+    if (overflowAmount < MINSIZE){
         numDivisions = (numElements / FAKECHUNKSIZE) - 1;
     }//if we'd have too small a last chunk
     else{
         numDivisions = (numElements / FAKECHUNKSIZE);
     }//if we'd have a bearable last chunk
+#endif
 
     int numDivisionsMarked = 0;
 
@@ -30,7 +39,8 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
         if (nextVal == ENDOFFILE){
             return;
         }//if
-        if (i % FAKECHUNKSIZE == 0 && numDivisionsMarked < numDivisions){
+        if (i != 0 && i % FAKECHUNKSIZE == 0 && numDivisionsMarked < numDivisions){
+        //if (i % FAKECHUNKSIZE == 0 && numDivisionsMarked < numDivisions){
             rabinToSHA.write(ENDOFCHUNK);
             rabinToLZW.write(ENDOFCHUNK);
             numDivisionsMarked++;

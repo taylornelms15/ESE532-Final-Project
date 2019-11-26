@@ -7,6 +7,7 @@
 #include "deduplicate_hw.h"
 #include "lzw_hw.h"
 #include "standinfuncts.h"
+#include "sha256_hw.h"
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
 
@@ -70,7 +71,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);
     rabin_hw_fake(readerToRabin, rabinToSHA, rabinToLZW, numElements);
-    sha_hw_fake(rabinToSHA, shaToDeduplicate);
+    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
