@@ -206,6 +206,7 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
 
 }//writeToOutput
 
+
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
 	#pragma HLS array_partition variable=hashTable dim=1
 
