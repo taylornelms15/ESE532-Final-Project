@@ -41,6 +41,7 @@ static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
 static const char deviceInfileName[] = "linux.tar";
 static const char deviceOutfileName[] = "linux.dat";
 
+
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
 void Check_error(int Error, const char * Message)
@@ -169,6 +170,8 @@ unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
   return Bytes_written;
 }//Store_Data
 
+#define SHORTAGE 0
+
 /**
  * This function encapsulates reading the next bits of data into our buffer for hardware processing
  * It will either read from an input file, or read from the server, depending on the defines
@@ -186,13 +189,13 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fil
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize / 2);
         return remainingSize / 2;
     }//need to have a smaller buffer this time
-    else if (remainingSize < INBUFFER_SIZE){
+    else if (remainingSize < INBUFFER_SIZE - SHORTAGE){
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize);
         return remainingSize;
     }
     else{
-        memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE);
-        return INBUFFER_SIZE;
+        memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE - SHORTAGE);
+        return INBUFFER_SIZE - SHORTAGE;
     }
 #endif
 }//readDataIntoBuffer
@@ -206,6 +209,10 @@ int main(int argc, char* argv[]){
     Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
     #endif
     #endif
+    int curiteration = 0;
+
+    printf("HW buffer size %d\n\n", INBUFFER_SIZE);
+
 
 
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
@@ -224,11 +231,13 @@ int main(int argc, char* argv[]){
     uint8_t* fileBuffer 	= Allocate(MAXINPUTFILESIZE);
     uint32_t fileSize 		= Load_data(fileBuffer);
     uint32_t fileOffset 	= 0;
+
 #endif
 	
     #if MEASURING_LATENCY
     unsigned long long overallStart = sds_clock_counter();
     #endif
+
 
     while(true){
         uint32_t nextBufferSize =
@@ -241,14 +250,21 @@ int main(int argc, char* argv[]){
         if (nextBufferSize == 0){
             break;
         }
-        printf("Starting processing on buffer of size %d\n", nextBufferSize);
+        printf("%d\tStarting processing on buffer of size %d\n", curiteration, nextBufferSize);
+        printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
-        printf("Processed buffer, ending size %d\n", hwOutputSize);
+        printf("%d\tProcessed buffer, ending size %d\n", curiteration, hwOutputSize);
+        curiteration++;
     }
 
     #if MEASURING_LATENCY
     unsigned long long overallEnd = sds_clock_counter();
+    printf("==================\n");
+    #if !READING_FROM_SERVER
+    printf("Incoming filesize: %d\n", fileSize);
+    #endif
+    printf("Ending filesize: %d\n", outputOffset + 1);
     printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
 

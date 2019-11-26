@@ -14,7 +14,7 @@ void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &read
     for (int i = 0; i < INBUFFER_SIZE; i++){
         #pragma HLS pipeline II=1
         uint8_t nextValue = input[i];
-        if (i < numElements){
+        if (i < (int)numElements){
             readerToRabin.write( (ap_uint<9>) nextValue);
         }//normal write
 
@@ -28,7 +28,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
     uint32_t numOutput = 0;
     uint8_t foundEnd = 0;
 
-    for(int i = 0; i < OUTBUFFER_SIZE; i++){//fake for-loop; will likely break somewhere in middle
+    for(int i = 0; i < OUTBUFFER_SIZE; i++){//fake for-loop
         uint8_t valToWrite = 0;
         if(foundEnd){
             valToWrite = 0;
@@ -65,6 +65,12 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     static hls::stream< ap_uint<9> > lzwToDeduplicate;
     static hls::stream< uint8_t > shaToDeduplicate;
     static hls::stream< ap_uint<9> > deduplicateToOutput;
+    #pragma HLS STREAM variable=readerToRabin depth=8
+    #pragma HLS STREAM variable=rabinToSHA depth=8
+    #pragma HLS STREAM variable=rabinToLZW depth=8
+    #pragma HLS STREAM variable=lzwToDeduplicate depth=8
+    #pragma HLS STREAM variable=shaToDeduplicate depth=8
+    #pragma HLS STREAM variable=deduplicateToOutput depth=8
 
 
 

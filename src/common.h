@@ -14,16 +14,17 @@ typedef unsigned short uint16_t;
 
 #define HALF_ENABLE_CPP11_CMATH 0
 
+
 #include "ap_int.h"
 
-#define MINSIZE (1 * 1024)
+#define MINSIZE (2 * 1024)
 #define MAXSIZE (6 * 1024)
 
 #define MAXINPUTFILESIZE (200000000)//200MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
-#define INBUFFER_SIZE 2000000 //2MB incoming buffer
-#define OUTBUFFER_SIZE (INBUFFER_SIZE)
+#define INBUFFER_SIZE 2000000//2MB incoming buffer
+#define OUTBUFFER_SIZE (INBUFFER_SIZE + 20000)//a little extra for stand-in headers
 
 #define MAX_CHUNKS_IN_HW_BUFFER ((INBUFFER_SIZE + 1) / MINSIZE)
 
