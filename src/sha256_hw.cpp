@@ -236,7 +236,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 						subchunk_counter++;
 					}
 
-					printf("dhasdujhandlka calling from 1\n");
+					//printf("dhasdujhandlka calling from 1\n");
 					sha256_hw_transform(subchunk, state);
 					for (i = 0; i < 56; i++){
 						subchunk.write(0);
@@ -263,29 +263,29 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 				subchunk.write(bitlen);
 				subchunk_counter += 8;
 
-				printf("dhasdujhandlka calling from 2\n");
+				//printf("dhasdujhandlka calling from 2\n");
 				sha256_hw_transform(subchunk, state);
 
 				//#pragma HLS RESOURCE variable=hash core=AddSub_DSP
 				// Since this implementation uses little endian byte ordering and SHA uses big endian,
 				// reverse all the bytes when copying the final state to the output hash.
-/*
-				printf("hash values: \n");
+#if 0
+				//printf("hash values: \n");
 				for(int j = 0; j < 8; j++)
 				{
 					for (i = 0; i < 4; ++i)
 					{
 						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
+						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
 						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
+						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
 						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
+						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
 						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
+						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
 					}
 				}
-				*/
+#endif
 
 #endif
 			ending_byte = byte;
@@ -303,7 +303,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 
 		if (datalen == 64)
 		{
-			printf("dhasdujhandlka calling from 3\n");
+			//printf("dhasdujhandlka calling from 3\n");
 			sha256_hw_transform(subchunk, state);
 			bitlen += 512;
 			datalen = 0;
@@ -462,11 +462,12 @@ void sha256_hw_wrapper(hls::stream<ap_uint<9>>& rabinToSHA, hls::stream< uint8_t
 	for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
 	        //#pragma HLS pipeline
 	        int endingByte = sha256_hw_compute(rabinToSHA, shaToDeduplicate);
-	        shaToDeduplicate.write((ap_uint<9>) endingByte);
+	        //shaToDeduplicate.write((ap_uint<9>) endingByte);
 	        if (endingByte == ENDOFFILE){
 	            return;
 	        }
 	    }
+
 }
 
 

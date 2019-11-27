@@ -18,7 +18,7 @@
 #define HRBITS (KEYLEN + ROWBITS)//number of bits in a "hash record" (key+val pairing)
 
 //If we're using a stand-in for LZW, for debugging purposes
-#define FAKING_LZW 1
+#define FAKING_LZW 0
 
 /*
 Thoughts about space:
@@ -199,9 +199,9 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
     }//5,6,7,8
     boundary = (boundary + 5) & 0x7;
 
-    output.write(valsToOutput1);
+    //output.write(valsToOutput1);
     if (numOutput == 2){
-    	output.write(valsToOutput2);
+    	//output.write(valsToOutput2);
     }
 
     return numOutput;
@@ -222,7 +222,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
             break;//effectively, the return function
         }//if end-of-stream value
         else{
-            output.write(readChar);
+            //output.write(readChar);
         }
     }//for
 
@@ -277,7 +277,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 
     }
     if (boundary != 0){
-    	output.write(currentOverflow);
+    	//output.write(currentOverflow);
     	oidx += 1;//not counting stop byte in our oidx
     }
 
@@ -292,7 +292,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uint<9> > &lzwToDeduplicate){
     for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
         int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
-        lzwToDeduplicate.write((ap_uint<9>) endingByte);
+        //lzwToDeduplicate.write((ap_uint<9>) endingByte);
         if (endingByte == ENDOFFILE){
             return;
         }

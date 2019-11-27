@@ -1,3 +1,4 @@
+
 /**
  * @file integratedMain.cpp
  * @author Taylor Nelms
@@ -8,10 +9,13 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 
 
-//#include "common.h"
+#include "common.h"
 #include "hardwareWrapper.h"
+#include "rabin.h"
 
 #define READING_FROM_SERVER 0
 //#define __linux__
@@ -38,8 +42,12 @@
 
 static const char hostInfileName[] = "C:/Users/rgjus/Desktop/test.txt";
 static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
-static const char deviceInfileName[] = "linux.tar";
-static const char deviceOutfileName[] = "linux.dat";
+static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
+//static const char deviceInfileName[] = "LittlePrince.txt";
+char deviceInfileName[50];
+static const char deviceOutfileName[] = "compress.dat";
+unsigned long long *out_table;
+unsigned long long *mod_table;
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -169,8 +177,6 @@ unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
   return Bytes_written;
 }//Store_Data
 
-#define SHORTAGE 0
-
 /**
  * This function encapsulates reading the next bits of data into our buffer for hardware processing
  * It will either read from an input file, or read from the server, depending on the defines
@@ -188,13 +194,13 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fil
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize / 2);
         return remainingSize / 2;
     }//need to have a smaller buffer this time
-    else if (remainingSize < INBUFFER_SIZE - SHORTAGE){
+    else if (remainingSize < INBUFFER_SIZE){
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize);
         return remainingSize;
     }
     else{
-        memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE - SHORTAGE);
-        return INBUFFER_SIZE - SHORTAGE;
+        memcpy(hwBuffer, fileBuffer + fileOffset, INBUFFER_SIZE);
+        return INBUFFER_SIZE;
     }
 #endif
 }//readDataIntoBuffer
@@ -208,10 +214,11 @@ int main(int argc, char* argv[]){
     Check_error(f_mount(&FS, "0:/", 0) != FR_OK, "Could not mount SD-card");
     #endif
     #endif
-    int curiteration = 0;
 
-    printf("HW buffer size %d\n\n", INBUFFER_SIZE);
-
+    if(argc == 2)
+    	strcpy(deviceInfileName, argv[1]);
+    else
+    	strcpy(deviceInfileName, "LittlePrince.txt");
 
 
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
@@ -221,7 +228,12 @@ int main(int argc, char* argv[]){
     uint8_t* output = Allocate(MAXINPUTFILESIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
+    out_table = (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
+    printf("Allocated output memory location at %p\n", out_table);
+    mod_table =  (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
+    printf("Allocated output memory location at %p\n", mod_table);
 
+    struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
 #if READING_FROM_SERVER
@@ -230,13 +242,11 @@ int main(int argc, char* argv[]){
     uint8_t* fileBuffer 	= Allocate(MAXINPUTFILESIZE);
     uint32_t fileSize 		= Load_data(fileBuffer);
     uint32_t fileOffset 	= 0;
-
 #endif
 	
     #if MEASURING_LATENCY
     unsigned long long overallStart = sds_clock_counter();
     #endif
-
 
     while(true){
         uint32_t nextBufferSize =
@@ -249,21 +259,14 @@ int main(int argc, char* argv[]){
         if (nextBufferSize == 0){
             break;
         }
-        printf("%d\tStarting processing on buffer of size %d\n", curiteration, nextBufferSize);
-        //printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
-        uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
+        printf("Starting processing on buffer of size %d\n", nextBufferSize);
+        uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize, out_table, mod_table);
         outputOffset += hwOutputSize;
-        printf("%d\tProcessed buffer, ending size %d\n", curiteration, hwOutputSize);
-        curiteration++;
+        printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
 
     #if MEASURING_LATENCY
     unsigned long long overallEnd = sds_clock_counter();
-    printf("==================\n");
-    #if !READING_FROM_SERVER
-    printf("Incoming filesize: %d\n", fileSize);
-    #endif
-    printf("Ending filesize: %d\n", outputOffset + 1);
     printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
 
@@ -273,11 +276,18 @@ int main(int argc, char* argv[]){
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
+    Free((uint8_t*)out_table);
+    Free((uint8_t*)mod_table);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #endif
+    char diff_str[250];
+    sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
+    int ret = system(diff_str);
+    printf("diff_str : %s\n", diff_str);
+    printf("ret: %d\n", ret);
 
-    return 0;
+    return ret;
 }//main
 
 
@@ -292,3 +302,4 @@ int main(int argc, char* argv[]){
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]){
     memset(tableLocation, 0xFF, SHA256TABLESIZE);
 }
+

@@ -17,11 +17,13 @@
 
 \section{I/O}
 
-We were unable to fully get a working integration of I/O functionality together within the alotted time. Cryptic errors and long build times exacerbated the problem. As such, we have no idea what the current throughput we are achieving is. That said, large portions of our code \textbf{are} coming together, so that's encouraging.
+We were able to get everything up and running. The throughput of the non-accelerated SW only implementation is 6.94Mbps. 
 
 \section{FPGA Acceleration}
 
-We were able to accelerate some functions, but unable to sensibly measure throughput in time. Further development should fix this.
+We were able to accelerate some functions mainly the LZW which was the bottleneck from the previous measurement. The new measured throughput is 15Mbps which is a ~2.5x improvement in throughput. 
+The current bottleneck is the SHA which will be added to HW and the Deduplication which is at present a O(n2) search. This will also be refined for next submission. 
+All 4 functions identified for hardware implementation will be put together in a dataflow model for the final implementation. 
 
 \subsection{Rabin}
 
@@ -29,7 +31,7 @@ We attempted to put the Rabin fingerprinting onto hardware in this iteration, bu
 
 \subsection{SHA}
 
-We have not yet moved this step onto the FPGA.
+We have not yet moved this step onto the FPGA. Should be added by for project 4. 
 
 \subsection{Deduplication}
 
