@@ -19,7 +19,7 @@ typedef unsigned short uint16_t;
 #define MINSIZE (1 * 1024)
 #define MAXSIZE (6 * 1024)
 
-#define MAXINPUTFILESIZE (200000000)//200MB
+#define MAXINPUTFILESIZE (25 * 1024 * 1024)//25MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
 #define INBUFFER_SIZE 2000000 //2MB incoming buffer
@@ -44,7 +44,7 @@ typedef unsigned short uint16_t;
 #define NUMHASHBUCKETS (1 << HASHBITS)
 #define SHA256TABLESIZE (NUMHASHBUCKETS * DRAM_PULL_SIZE)
 
-
+#define __linux__
 
 
 

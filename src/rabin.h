@@ -35,9 +35,9 @@ void rabin_reset(struct rabin_t *h);
 uint8_t rabin_slide(struct rabin_t *h, uint8_t b, uint8_t wpos);
 uint64_t rabin_append(uint64_t digest, uint8_t c);
 
-void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap_uint<9> > &rabinToSHA, hls::stream<ap_uint<9> > &rabinToLZW, uint64_t out_table[256], uint64_t mod_table[256], uint32_t len);
+void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap_uint<9> > &rabinToSHA, hls::stream<ap_uint<9> > &rabinToLZW, unsigned long long out_table[256], unsigned long long mod_table[256], uint32_t len);
 
-int rabin_next_chunk_SW(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], uint64_t out_table[256], uint64_t mod_table[256], unsigned int len);
+int rabin_next_chunk_SW(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned long long out_table[256], unsigned long long mod_table[256], unsigned int len);
 
 /*
 int rabin_next_chunk_HW(uint8_t buf[MAXINPUTFILESIZE], uint8_t chunk[MAXSIZE], unsigned long long out_table[256], unsigned long long mod_table[256], unsigned int len);

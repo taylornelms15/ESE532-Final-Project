@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "rabin.h"
+#include "standinfuncts.h"
 
 #define MASK ((1<<AVERAGE_BITS)-1)
 #define POL_SHIFT (POLYNOMIAL_DEGREE-8)
@@ -15,9 +16,9 @@ static bool tables_initialized = false;
 /*unsigned long long mod_table[256];
 unsigned long long out_table[256];
 */
-uint64_t* out_table = (uint64_t *)malloc(sizeof(uint64_t) * 256);
+extern unsigned long long* out_table;
 //std::cout << "Allocated out_table at " << out_table << std::endl;
-uint64_t* mod_table = (uint64_t *)malloc(sizeof(uint64_t) * 256);
+extern unsigned long long* mod_table;
 //std::cout <<"Allocated mod_table at " << mod_table << std::endl;
 
 
@@ -127,7 +128,7 @@ void rabin_reset(struct rabin_t *h) {
 
 
 
-void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap_uint<9> > &rabinToSHA, hls::stream<ap_uint<9> > &rabinToLZW, uint64_t out_table[256], uint64_t mod_table[256], uint32_t len) {
+void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap_uint<9> > &rabinToSHA, hls::stream<ap_uint<9> > &rabinToLZW, unsigned long long out_table[256], unsigned long long mod_table[256], uint32_t len) {
 
     uint8_t wpos = 0;
     uint64_t digest = 0;
@@ -196,7 +197,7 @@ void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap
 }
 
 
-int rabin_next_chunk_SW(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], uint64_t out_table[256], uint64_t mod_table[256], unsigned int len) {
+int rabin_next_chunk_SW(struct rabin_t *h, uint8_t buf[MAXSIZE], uint8_t chunk[MAXSIZE], unsigned long long out_table[256], unsigned long long mod_table[256], unsigned int len) {
 	unsigned int count = h->count;
 	unsigned int pos = h->pos;
 	uint64_t digest = h->digest;

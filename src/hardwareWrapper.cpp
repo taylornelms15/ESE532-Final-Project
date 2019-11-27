@@ -55,9 +55,9 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 }//finalOutput
 
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
-                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, uint64_t out_table[256], uint64_t mod_table[256]){
-    #pragma HLS STREAM variable=input //depth=32//not sure if good number
-    #pragma HLS STREAM variable=output //depth=32//not sure if good number
+                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256]){
+    #pragma HLS STREAM variable=input depth=2048//not sure if good number
+    #pragma HLS STREAM variable=output depth=2048//not sure if good number
 
     static hls::stream< ap_uint<9> > readerToRabin;
     static hls::stream< ap_uint<9> > rabinToSHA; 
@@ -66,7 +66,12 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     static hls::stream< uint8_t > shaToDeduplicate;
     static hls::stream< ap_uint<9> > deduplicateToOutput;
 
-
+	#pragma HLS STREAM variable=readerToRabin depth=2048
+	#pragma HLS STREAM variable=rabinToSHA depth=2048
+	#pragma HLS STREAM variable=rabinToLZW depth=2048
+	#pragma HLS STREAM variable=shaToDeduplicate depth=2048
+	#pragma HLS STREAM variable=lzwToDeduplicate depth=2048
+	#pragma HLS STREAM variable=deduplicateToOutput depth=2048
 
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);

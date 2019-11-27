@@ -42,10 +42,11 @@
 static const char hostInfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.txt";
 static const char hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.compress";
 static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
-static const char deviceInfileName[] = "under.txt";
-static const char deviceOutfileName[] = "under.dat";
-extern uint64_t *out_table;
-extern uint64_t *mod_table;
+//static const char deviceInfileName[] = "LittlePrince.txt";
+char deviceInfileName[50];
+static const char deviceOutfileName[] = "compress.dat";
+unsigned long long *out_table;
+unsigned long long *mod_table;
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -213,6 +214,11 @@ int main(int argc, char* argv[]){
     #endif
     #endif
 
+    if(argc == 2)
+    	strcpy(deviceInfileName, argv[1]);
+    else
+    	strcpy(deviceInfileName, "LittlePrince.txt");
+
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
     printf("Allocated chunkTable at %p\n", chunkTable);
     uint8_t* hwBuffer = Allocate(INBUFFER_SIZE);
@@ -220,6 +226,10 @@ int main(int argc, char* argv[]){
     uint8_t* output = Allocate(MAXINPUTFILESIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
+    out_table = (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    printf("Allocated output memory location at %p\n", out_table);
+    mod_table =  (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    printf("Allocated output memory location at %p\n", mod_table);
 
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
@@ -264,12 +274,12 @@ int main(int argc, char* argv[]){
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
-    free(out_table);
-    free(mod_table);
+    sds_free(out_table);
+    sds_free(mod_table);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #endif
-    char diff_str[200];
+    char diff_str[250];
     sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
     int ret = system(diff_str);
     printf("diff_str : %s\n", diff_str);
