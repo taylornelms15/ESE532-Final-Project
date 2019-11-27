@@ -38,8 +38,8 @@
 
 static const char hostInfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/FranklinLong.txt";
 static const char hostOutfileName[] = "/Users/taylo/csworkspace/ese532/final/Testfiles/FranklinLong.compress";
-static const char deviceInfileName[] = "vmlinuz.tar";
-static const char deviceOutfileName[] = "vmlinuz.dat";
+static const char deviceInfileName[] = "over.txt";
+static const char deviceOutfileName[] = "over.dat";
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 

@@ -13,10 +13,10 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
     int overflowAmount = numElements % FAKECHUNKSIZE;
     int numDivisions;
     if (overflowAmount < MINSIZE){
-        numDivisions = (numElements / FAKECHUNKSIZE) - 2;
+        numDivisions = (numElements / FAKECHUNKSIZE) - 1;
     }//if we'd have too small a last chunk
     else{
-        numDivisions = (numElements / FAKECHUNKSIZE) - 1;
+        numDivisions = (numElements / FAKECHUNKSIZE) - 0;
     }//if we'd have a bearable last chunk
 
     int numDivisionsMarked = 0;
@@ -57,14 +57,16 @@ int16_t PRNG(uint32_t nSeed[1]){
     return (int16_t)(nSeed[0]);
 }
 
+static uint8_t chunkBuffer[MAXSIZE];
+
 void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate){
 
-    uint8_t chunkBuffer[MAXSIZE];
+    //uint8_t chunkBuffer[MAXSIZE];
     uint8_t foundEndOfFile = 0;
     uint32_t nSeed[1] = {5323};//prng seed
     #pragma HLS array_partition variable=nSeed
 
-    for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
+    for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER + 1; j++){
         //#pragma HLS loop_tripcount min=1000 max=2000
         //For each incoming chunk
 

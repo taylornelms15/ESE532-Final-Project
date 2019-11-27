@@ -6,6 +6,7 @@
 #include "chunkdict_hw.h"
 #include "deduplicate_hw.h"
 
+#define FAKING_DEDUPLICATE 1
 
 static ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1];//4 extra for the header, 1 extra for an ending ENDOFCHUNK or ENDOFFILE
 
@@ -78,7 +79,11 @@ uint32_t fillHeaderBuffer(uint8_t foundSha, int shaIndex, uint32_t lzwChunkSize,
 void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
                   uint32_t                  packetSendSize){
     #pragma HLS inline
+#if FAKING_DEDUPLICATE
+	for(uint32_t i = 0; i < MAXSIZE; i++){
+#else
     for(uint32_t i = 0; i < MAXSIZE + 4 + 1; i++){
+#endif
         #pragma HLS pipeline
         ap_uint<9> nextVal = lzwOutputBuffer[i];
         if (i < packetSendSize)
@@ -106,7 +111,11 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         //read in our SHA value
         readFromSha(shaToDeduplicate, shaBuffer);
 
+#if FAKING_DEDUPLICATE
+        int shaIndex = -1;
+#else
         int shaIndex = indexForShaVal_HW(shaBuffer, tableLocation);
+#endif
         uint8_t foundSha;//stand-in for a boolean
         if (shaIndex < 0) foundSha = 0;
         else foundSha = 1;
@@ -115,7 +124,12 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         //fill in the header appropriately
         uint32_t packetSendSize = fillHeaderBuffer(foundSha, shaIndex, lzwChunkSize, wasEndOfFile[0]);
 
+#if FAKING_DEDUPLICATE
+        outputPacket(deduplicateToOutput, lzwChunkSize + 1);
+#else
         outputPacket(deduplicateToOutput, packetSendSize);
+#endif
+
 
         if (wasEndOfFile[0]){
             return;

@@ -7,8 +7,8 @@
 
 #define NONEFOUND 0x1FFF
 //Tunable design axis parameters
-#define HDEPTH 24//depth of the hash bucket (capacity = (8k vals / 1k rows) * (3x capacity variance buffer))
-#define ROWNUM (MAXCHUNKLENGTH)
+#define HDEPTH 28//depth of the hash bucket (capacity = (8k vals / 1k rows) * (3x capacity variance buffer))
+#define ROWNUM (MAXSIZE)
 #define ROWBITS 13//log2(number of rows)
 #define COLNUM (MAXCHARVAL)
 #define COLBITS 8//log2(number of columns)
@@ -19,31 +19,6 @@
 
 //If we're using a stand-in for LZW, for debugging purposes
 #define FAKING_LZW 1
-
-/*
-Thoughts about space:
-8k total table rows (13b)
-256 total table cols (8b)
-So, 21b address needed, matching to a 13b value
-
-21b address needs to reduce down to the 13b "where is my value" index
-
-Match BRAM: need 3 (one per 9b of key) times 114 (1 per 72 entries) BRAM's
-
-Value BRAM: 8k entries, each 13b wide
- */
-
-//conceptually:
-//ap_uint<8192> matchTable_Top[128];//top 7 bits of key
-//ap_uint<8192> matchTable_Med[128];//med 7 bits of key
-//ap_uint<8192> matchTable_Low[128];//low 7 bits of key
-//
-//for matchTable_Top:
-//one BRAM can hold 4 sets of "rows" (512/128)
-//brings it down to ap_uint<2048> matchTable_TopMod[512]
-//so, given key `k`, matchTable_Top[k] = matchTable_TopMod[k] | (matchTable_TopMod[k + 128] << 2048) | (matchTable_TopMod[k + 256] << 4096) |  (matchTable_TopMod[k + 384] << 6144); 
-//ap_uint<13> valTable[MAXCHUNKLENGTH];//should split into multiple BRAM's...? (2 of them, ish)
-//static uint16_t table[MAXCHUNKLENGTH][MAXCHARVAL];
 
 static const uint8_t rindBox[256] = {
   //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -63,11 +38,6 @@ static const uint8_t rindBox[256] = {
   0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
-
-
-
-
-
 
 /*
 Hash approach:
@@ -213,12 +183,12 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
 
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
     int endingByte = ENDOFCHUNK;
-    for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
+    for(uint16_t iidx = 1; iidx <= MAXSIZE; iidx++) {
         #pragma HLS loop_tripcount min=1024 max=6144 avg=3072
         ap_uint<9> readChar = input.read();
         if (readChar > 255){
             endingByte = (int)readChar;//either ENDOFCHUNK or ENDOFFILE
-
+            return endingByte;
             break;//effectively, the return function
         }//if end-of-stream value
         else{
@@ -238,23 +208,22 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     boundary = 0;//what bit of an output byte we'd write next
     currentOverflow = 0;//stores our extra bits
 
-    ///keeps track of how many bytes we've written
-    uint16_t oidx = 0;
     ///keeps track of how many records we've written
     uint16_t numWritten = 0;
-    int endingByte = ENDOFCHUNK;
+    int endingByte = ENDOFFILE;
 
-    ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
-    for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
+    ap_uint<9> firstByte = input.read();
+    ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>) firstByte;
+    for(uint16_t iidx = 1; iidx <= MAXSIZE; iidx++) {
 		#pragma HLS loop_tripcount min=1024 max=6144 avg=3072
         #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
-        if (readChar > 255){
+        if (readChar == ENDOFCHUNK || readChar == ENDOFFILE){
             endingByte = (int)readChar;//either ENDOFCHUNK or ENDOFFILE
-            oidx += writeToOutput(curTableRow, output);
+            writeToOutput(curTableRow, output);
             numWritten++;
+            break;
 
-            break;//effectively, the return function; next invocation of this method will do the necessary resets
         }//if end-of-stream value
         else{
             uint8_t curChar = (uint8_t)readChar;
@@ -266,7 +235,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
                 curTableRow = currentTableValue;
             }
             else {
-                oidx += writeToOutput(curTableRow, output);
+                writeToOutput(curTableRow, output);
                 numWritten++;
                 ap_uint<ROWBITS> valToWrite = numWritten + MAXCHARVAL - 1;
                 uint8_t freeSlot = writeToTable(key, valToWrite, validityEntry, hashedKey);
@@ -276,14 +245,11 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
         }//else, legit value
 
     }
+
     if (boundary != 0){
     	output.write(currentOverflow);
-    	oidx += 1;//not counting stop byte in our oidx
     }
-
     return endingByte;
-    //output.write(0x100);
-    //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
 
 }//lzwCompress
 
@@ -297,70 +263,4 @@ void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uin
             return;
         }
     }
-}
-
-//###############
-//BELOW: functions for development in conjunction with direct software calls
-//Kept for compatibility reasons sort of, also for reference
-//###############
-
-void inputToStream(const uint8_t input[MAXCHUNKLENGTH], int numElements, hls::stream< ap_uint<9> > &inHW){
-	for(int i = 0; i < numElements; i++){
-		#pragma HLS pipeline II=1
-		#pragma HLS loop_tripcount min=1024 max=8192
-		uint8_t nextInput = input[i];
-		inHW.write((ap_uint<9>)(nextInput));
-	}
-	inHW.write((ap_uint<9>) 256);
-}
-
-void outputFromStream(hls::stream< ap_uint<9> > &outHW, uint8_t output[MAXCHUNKLENGTH]){
-    //uint32_t header = (numOutput + 4) << 1;//bit 0 is 0 because LZW chunk, the rest is the size of the data. Subtracting 4 to get "size of LZW" part sans header
-
-    //output[oidx++] = (uint8_t)(header >> 0);
-    //output[oidx++] = (uint8_t)(header >> 8);
-    //output[oidx++] = (uint8_t)(header >> 16);
-    //output[oidx++] = (uint8_t)(header >> 24);
-    int foundEnd = 0;
-
-	for(int i = 0; i < MAXCHUNKLENGTH; i++){
-		#pragma HLS pipeline II=1
-		#pragma HLS loop_tripcount min=1 max=8192
-		uint8_t valToOutput = 0;
-		if (!foundEnd){
-		    ap_uint<9> nextOutput = outHW.read();
-		    if(nextOutput & 0x100){
-		    	valToOutput = 0;
-			    foundEnd = 1;
-		    }
-		    else{
-			    valToOutput = nextOutput;
-		    }
-		}//reading from stream still
-		else{
-			valToOutput = 0;
-		}
-		output[i] = valToOutput;
-	}
-
-}
-
-int lzwCompressWrapper(const uint8_t input[MAXCHUNKLENGTH], int numElements, uint8_t output[MAXCHUNKLENGTH]){
-    #pragma HLS STREAM variable=input depth=16
-    #pragma HLS STREAM variable=output depth=16
-	static hls::stream< ap_uint<9> > inHW;
-	static hls::stream< ap_uint<9> > outHW;
-
-
-	#pragma HLS dataflow
-
-	inputToStream(input, numElements, inHW);
-	int numOutput = lzwCompressHW(inHW, outHW);
-	outputFromStream(outHW, output);
-
-
-	return numOutput;
-}
-
-
-
+}//lzwCompressAllHW
