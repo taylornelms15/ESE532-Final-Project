@@ -187,7 +187,7 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer){
     //TODO: put in server reads here
 #else
 uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fileOffset, uint32_t fileSize){
-    uint32_t remainingSize = fileSize - (fileOffset + 1);
+    uint32_t remainingSize = fileSize - (fileOffset);
     if (remainingSize == 0) return 0;
     else if (remainingSize > INBUFFER_SIZE && (remainingSize % INBUFFER_SIZE < MINSIZE)){
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize / 2);
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]){
     Free(fileBuffer);
 #endif
     char diff_str[250];
-    sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
+    sprintf(diff_str, "diff -w %s %s", hostOutfileName, gold_hostOutfileName);
     int ret = system(diff_str);
     printf("diff_str : %s\n", diff_str);
     printf("ret: %d\n", ret);
