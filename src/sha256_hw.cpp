@@ -30,6 +30,8 @@ void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], uns
 
 /*********************** FUNCTION DEFINITIONS *********************** */
 
+static int counter_hw = 0;
+
 #ifdef SHA_STREAM
 void sha256_hw_transform(hls::stream<ap_uint<9>>& data, WORD_SHA state[])
 {
@@ -52,10 +54,12 @@ void sha256_hw_transform(hls::stream<ap_uint<9>>& data, WORD_SHA state[])
 #pragma HLS RESOURCE variable=m core=AddSub_DSP
 #pragma HLS RESOURCE variable=state core=AddSub_DSP
 
+
 	loop_1:for (i = 0, j = 0; i < 16; ++i, j += 4)
 	{
 //#pragma HLS unroll
 		m[i] = (data.read() << 24) | (data.read() << 16) | (data.read() << 8) | (data.read());
+		counter_hw += 4;
 	}
 
 	loop_2:for ( ; i < 64; ++i)
@@ -96,6 +100,8 @@ void sha256_hw_transform(hls::stream<ap_uint<9>>& data, WORD_SHA state[])
 	state[5] += f;
 	state[6] += g;
 	state[7] += h;
+
+	//printf("aggduasgduiak read %d bytes from subchunk\n", counter_hw);
 }
 #else
 void sha256_hw_transform(BYTE data[], WORD_SHA state[])
@@ -171,6 +177,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 {
 //#pragma HLS allocation instances=sha256_hw_transform limit=1 function
 	WORD_SHA state[8];
+	int counter = 0, subchunk_counter = 0;
 #pragma HLS array_partition variable=state
 
 	state[0] = 0x6a09e667;
@@ -191,35 +198,50 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 #pragma HLS RESOURCE variable=datalen core=AddSub_DSP
 #pragma HLS RESOURCE variable=i core=AddSub_DSP
 
+	ap_uint<9> byte;
+	hls::stream<ap_uint<9>> subchunk;
+#pragma HLS STREAM variable=subchunk depth=64
 	for(uint16_t i = 1; i <= MAXCHUNKLENGTH; i++)
 	{
+//#pragma HLS dataflow
 #pragma HLS loop_tripcount min=0 avg=4000 max=8000
-		hls::stream<ap_uint<9>> subchunk, last_subchunk;
-		ap_uint<9> byte = data.read();
 
+		byte = data.read();
+		counter++;
 		datalen++;
-		subchunk.write(byte);
-#if 1
+
+
 		if (byte > 255 && datalen < 64)	/** Either end of chunk or end of file */
 		{
-			if (datalen < 56) {
+#if 1
+			i = datalen;
+			if (i < 56) {
 					subchunk.write(0x80);
-					while (i < 56)
+					subchunk_counter++;
+					while (i < 56){
+						i++;
 						subchunk.write(0x00);
+						subchunk_counter++;
+					}
 				}
 				else
 				{
 					//printf("len greater then 56\n");
 					subchunk.write(0x80);
+					subchunk_counter++;
 					while_loop:while (i < 64)
 					{
 			#pragma HLS loop_tripcount min=0 avg=4 max=8
 						subchunk.write(0x00);
+						subchunk_counter++;
 					}
 
+					printf("dhasdujhandlka calling from 1\n");
 					sha256_hw_transform(subchunk, state);
-					for (i = 0; i < 56; i++)
+					for (i = 0; i < 56; i++){
 						subchunk.write(0);
+						subchunk_counter++;
+					}
 				}
 
 				/*
@@ -239,14 +261,15 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 				subchunk.write(bitlen >> 16);
 				subchunk.write(bitlen >> 8);
 				subchunk.write(bitlen);
+				subchunk_counter += 8;
 
+				printf("dhasdujhandlka calling from 2\n");
 				sha256_hw_transform(subchunk, state);
 
-				// TODO: Stream SHA values ?
-				#pragma HLS RESOURCE variable=hash core=AddSub_DSP
+				//#pragma HLS RESOURCE variable=hash core=AddSub_DSP
 				// Since this implementation uses little endian byte ordering and SHA uses big endian,
 				// reverse all the bytes when copying the final state to the output hash.
-
+/*
 				printf("hash values: \n");
 				for(int j = 0; j < 8; j++)
 				{
@@ -262,19 +285,32 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 						printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
 					}
 				}
+				*/
 
+#endif
 			ending_byte = byte;
+
+			printf("read %d bytes from input \n", counter);
+				printf("written %d bytes to subchunk\n", subchunk_counter);
+				printf("read %d bytes from subchunk \n", counter_hw);
+			counter_hw = 0;
 			return ending_byte;
 		}
 
+
+		subchunk.write(byte);
+		subchunk_counter++;
+
 		if (datalen == 64)
 		{
+			printf("dhasdujhandlka calling from 3\n");
 			sha256_hw_transform(subchunk, state);
 			bitlen += 512;
 			datalen = 0;
 		}
-#endif
+
 	}
+
 
 /*
 	printf("state variables:\n");

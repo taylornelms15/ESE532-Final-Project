@@ -10,6 +10,7 @@
 
 void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< ap_uint<9> > &rabinToLZW, uint32_t numElements){
 
+	int counter = 0;
     int overflowAmount = numElements % FAKECHUNKSIZE;
     int numDivisions;
     if (overflowAmount < MINSIZE){
@@ -26,12 +27,15 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
         ap_uint<9> nextVal = readerToRabin.read();
 
         rabinToSHA.write(nextVal);
+        counter++;
         rabinToLZW.write(nextVal);
         if (nextVal == ENDOFFILE){
+        	printf("written %d bytes to rabinToSHA\n", counter);
             return;
         }//if
         if (i != 0 && i % FAKECHUNKSIZE == 0 && numDivisionsMarked < numDivisions){
             rabinToSHA.write(ENDOFCHUNK);
+            counter++;
             rabinToLZW.write(ENDOFCHUNK);
             numDivisionsMarked++;
         }//if we're putting a fake chunk break in here
