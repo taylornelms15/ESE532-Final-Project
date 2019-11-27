@@ -19,7 +19,7 @@ void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &read
         }//normal write
 
     }//for
-    readerToRabin.write(ENDOFFILE);//currently, is not keeping chunk-state between adjacent inputs. Probably cleaner this way.
+    //readerToRabin.write(ENDOFFILE);//currently, is not keeping chunk-state between adjacent inputs. Probably cleaner this way.
 
 }//readIntoRabin
 

@@ -22,17 +22,26 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
 
     int numDivisionsMarked = 0;
 
-    for(int i = 0; i < INBUFFER_SIZE + MAX_CHUNKS_IN_HW_BUFFER + 1; i++){//one for each incoming byte + one for each ENDOFCHUNK + one for the ENDOFFILE
+    for(int i = 0; i < INBUFFER_SIZE; i++){
         #pragma HLS pipeline II=2
         ap_uint<9> nextVal = readerToRabin.read();
 
         rabinToSHA.write(nextVal);
         counter++;
         rabinToLZW.write(nextVal);
+
+#if 0
         if (nextVal == ENDOFFILE){
         	printf("written %d bytes to rabinToSHA\n", counter);
             return;
         }//if
+#endif
+
+
+        if (i == numElements - 1){
+            break;
+        }
+
         if (i != 0 && i % FAKECHUNKSIZE == 0 && numDivisionsMarked < numDivisions){
             rabinToSHA.write(ENDOFCHUNK);
             counter++;
@@ -41,6 +50,12 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
         }//if we're putting a fake chunk break in here
 
     }//for
+
+    printf("written %d bytes to rabinToSHA\n", counter);
+
+    rabinToSHA.write(ENDOFFILE);
+    rabinToLZW.write(ENDOFFILE);
+    return;
 
 }//rabin_hw_fake
 

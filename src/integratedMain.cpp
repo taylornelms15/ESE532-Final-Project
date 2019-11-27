@@ -41,7 +41,6 @@ static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
 static const char deviceInfileName[] = "linux.tar";
 static const char deviceOutfileName[] = "linux.dat";
 
-
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
 void Check_error(int Error, const char * Message)
@@ -251,7 +250,7 @@ int main(int argc, char* argv[]){
             break;
         }
         printf("%d\tStarting processing on buffer of size %d\n", curiteration, nextBufferSize);
-        printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
+        //printf("%d\thwbuffer %p\toutput %p\tchunkTable %p\tnextBufferSize %d\n", curiteration, hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize);
         outputOffset += hwOutputSize;
         printf("%d\tProcessed buffer, ending size %d\n", curiteration, hwOutputSize);
