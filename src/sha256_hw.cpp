@@ -129,7 +129,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 	hls::stream<ap_uint<9> > subchunk;
 	uint16_t itr;
 #pragma HLS STREAM variable=subchunk depth=2048
-	for(uint16_t i = 1; i <= MAXCHUNKLENGTH; i++)
+	for(uint16_t i = 0; i <= MAXCHUNKLENGTH; i++)
 	{
 //#pragma HLS dataflow
 #pragma HLS loop_tripcount min=0 avg=4000 max=8000
@@ -209,8 +209,8 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 			ending_byte = byte;
 
 			//printf("read %d bytes from input \n", counter);
-				//printf("written %d bytes to subchunk\n", subchunk_counter);
-				//printf("read %d bytes from subchunk \n", counter_hw);
+			//printf("written %d bytes to subchunk\n", subchunk_counter);
+			//printf("read %d bytes from subchunk \n", counter_hw);
 			counter_hw = 0;
 			return ending_byte;
 		}

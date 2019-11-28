@@ -39,8 +39,8 @@
 #endif
 
 
-static const char hostInfileName[] = "C:/Users/rgjus/Desktop/franklin.txt";
-static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_franklin.txt";
+static const char hostInfileName[] = "C:/Users/rgjus/Desktop/vmlinuz.tar";
+static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_vmlinuz.dat";
 static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
