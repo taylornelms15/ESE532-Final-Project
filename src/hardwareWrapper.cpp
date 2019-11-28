@@ -87,12 +87,13 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     readIntoRabin(input, readerToRabin, numElements);
     rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, numElements);
     //rabin_hw_fake(readerToRabin, rabinToSHA, rabinToLZW, numElements);
-    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
+    //sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
+    sha_hw_fake(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);		// TODO: Enable writing to lzwToDeduplicate
-    //deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
-    //uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
+    deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
+    uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 
-    //return numOutput;
+    return numOutput;
 }//processBuffer
 
 

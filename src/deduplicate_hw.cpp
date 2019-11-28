@@ -81,8 +81,9 @@ void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
     for(uint32_t i = 0; i < MAXSIZE + 4 + 1; i++){
         #pragma HLS pipeline
         ap_uint<9> nextVal = lzwOutputBuffer[i];
-        if (i < packetSendSize)
+        if (i < packetSendSize){
             deduplicateToOutput.write(nextVal);
+        }
     }//for
 
 

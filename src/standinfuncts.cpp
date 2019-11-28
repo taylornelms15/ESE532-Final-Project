@@ -86,6 +86,7 @@ void rabin_hw_fake(hls::stream< ap_uint<9> > &readerToRabin, hls::stream< ap_uin
 >>>>>>> 98e15d9948362aa1843457af31ba97f3c49b1910
 }//rabin_hw_fake
 
+#endif
 int16_t PRNG(uint32_t nSeed[1]){
     #pragma HLS inline
 
@@ -99,6 +100,7 @@ int16_t PRNG(uint32_t nSeed[1]){
     return (int16_t)(nSeed[0]);
 }
 
+
 void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate){
 
     uint8_t chunkBuffer[MAXSIZE];
@@ -107,11 +109,9 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
     #pragma HLS array_partition variable=nSeed
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
-<<<<<<< HEAD
-        //#pragma HLS loop_tripcount min=1000 max=2000
-=======
+
         #pragma HLS loop_tripcount min=1000 max=2000
->>>>>>> 98e15d9948362aa1843457af31ba97f3c49b1910
+
         //For each incoming chunk
 
         //read the input stream
@@ -130,11 +130,9 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
         //output 32 random bytes
         for (int i = 0; i < SHA256_SIZE; i++){
-<<<<<<< HEAD
-            #pragma HLS pipeline II=2
-=======
+
             #pragma HLS pipeline II=3
->>>>>>> 98e15d9948362aa1843457af31ba97f3c49b1910
+
             uint8_t nextByte = (uint8_t) PRNG(nSeed);
             shaToDeduplicate.write(nextByte);
 
@@ -146,7 +144,7 @@ void sha_hw_fake(hls::stream< ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &
 
 }//sha_hw_fake
 
-#endif
+
 
 
 

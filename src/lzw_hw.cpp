@@ -20,6 +20,7 @@
 //If we're using a stand-in for LZW, for debugging purposes
 #define FAKING_LZW 0
 
+int counter = 0;
 /*
 Thoughts about space:
 8k total table rows (13b)
@@ -177,6 +178,7 @@ ap_uint<ROWBITS> readFromTable(ap_uint<KEYLEN> key, ap_uint<HDEPTH> validityEntr
 
 uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &output ){
 	#pragma HLS inline
+
 	uint8_t numOutput = 0;
     ap_uint<9> valsToOutput1;
     ap_uint<9> valsToOutput2;
@@ -199,9 +201,11 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
     }//5,6,7,8
     boundary = (boundary + 5) & 0x7;
 
-    //output.write(valsToOutput1);
+    output.write(valsToOutput1);
+    counter++;
     if (numOutput == 2){
-    	//output.write(valsToOutput2);
+    	output.write(valsToOutput2);
+    	counter++;
     }
 
     return numOutput;
@@ -234,6 +238,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
 	#pragma HLS array_partition variable=hashTable dim=1
 
+	counter = 0;
     resetValidityTable();
     boundary = 0;//what bit of an output byte we'd write next
     currentOverflow = 0;//stores our extra bits
@@ -277,10 +282,12 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 
     }
     if (boundary != 0){
-    	//output.write(currentOverflow);
+    	output.write(currentOverflow);
+    	counter++;
     	oidx += 1;//not counting stop byte in our oidx
     }
 
+    printf("lzw counter: %d\n", counter);
     return endingByte;
     //output.write(0x100);
     //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
@@ -292,7 +299,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uint<9> > &lzwToDeduplicate){
     for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
         int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
-        //lzwToDeduplicate.write((ap_uint<9>) endingByte);
+        lzwToDeduplicate.write((ap_uint<9>) endingByte);
         if (endingByte == ENDOFFILE){
             return;
         }

@@ -1,4 +1,3 @@
-
 /**
  * @file integratedMain.cpp
  * @author Taylor Nelms
@@ -17,7 +16,7 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
-#define READING_FROM_SERVER 0
+//#define READING_FROM_SERVER 1
 //#define __linux__
 
 #if READING_FROM_SERVER
@@ -87,6 +86,37 @@ void Free(uint8_t* Frame){
     free(Frame);
 #endif
 }
+
+#if READING_FROM_SERVER
+unsigned int read_NW(unsigned char *Data) {
+	ESE532_Server Server = ESE532_Server();
+	Server.setup_server();
+	unsigned int bytes_read = 0;
+	unsigned int currentIndex = 0;
+	uint8_t server_rd_stp = 0;
+	while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
+	      	uint8_t pkt[MAXPKTSIZE+HEADER];
+	        uint16_t thisPacketBytes = Server.get_packet(pkt);
+	        if (thisPacketBytes < 0){
+	            printf("Read %d total bytes from network\n", currentIndex + 1);
+	            break;
+	        }//end of transmission
+
+	        if((pkt[1] & 0x80) == 128)
+	          server_rd_stp = 1;
+	        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) & 0x7fff) ;
+	        printf("pkt[0] : %x\n", pkt[0]);
+			printf("pkt[1] : %x\n", pkt[1]);
+	        printf("pkt len: %d\n", thisPacketBytes);
+	        memcpy(Data + currentIndex, &pkt[HEADER], thisPacketBytes);
+	        currentIndex += thisPacketBytes;
+	        bytes_read += thisPacketBytes;
+
+	    }//while
+
+	return bytes_read;
+}
+#endif
 
 unsigned int Load_data_linux(unsigned char*  Data, const char* fileName){
   unsigned int Bytes_read;
@@ -184,11 +214,24 @@ unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
  * @return Number of elements read into our hardware buffer, or 0 if we've hit the end.
  */
 #if READING_FROM_SERVER
-uint32_t readDataIntoBuffer(uint8_t* hwBuffer){
-    //TODO: put in server reads here
+uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t *packetBuffer, uint32_t packetOffset, uint32_t recvBytes){
+	 uint32_t remainingSize = recvBytes - (packetOffset);
+	    if (remainingSize == 0) return 0;
+	    else if (remainingSize > INBUFFER_SIZE && (remainingSize % INBUFFER_SIZE < MINSIZE)){
+	        memcpy(hwBuffer, packetBuffer + packetOffset, remainingSize / 2);
+	        return remainingSize / 2;
+	    }//need to have a smaller buffer this time
+	    else if (remainingSize < INBUFFER_SIZE){
+	        memcpy(hwBuffer, packetBuffer + packetOffset, remainingSize);
+	        return remainingSize;
+	    }
+	    else{
+	        memcpy(hwBuffer, packetBuffer + packetOffset, INBUFFER_SIZE);
+	        return INBUFFER_SIZE;
+	    }
 #else
 uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fileOffset, uint32_t fileSize){
-    uint32_t remainingSize = fileSize - (fileOffset + 1);
+    uint32_t remainingSize = fileSize - (fileOffset);
     if (remainingSize == 0) return 0;
     else if (remainingSize > INBUFFER_SIZE && (remainingSize % INBUFFER_SIZE < MINSIZE)){
         memcpy(hwBuffer, fileBuffer + fileOffset, remainingSize / 2);
@@ -220,7 +263,6 @@ int main(int argc, char* argv[]){
     else
     	strcpy(deviceInfileName, "LittlePrince.txt");
 
-
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
     printf("Allocated chunkTable at %p\n", chunkTable);
     uint8_t* hwBuffer = Allocate(INBUFFER_SIZE);
@@ -237,7 +279,9 @@ int main(int argc, char* argv[]){
     resetTable(chunkTable);
 
 #if READING_FROM_SERVER
-    //TODO: init server here
+    uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
+    uint32_t recvBytes =  	read_NW(packetBuffer);
+    uint32_t packetOffset = 0;
 #else
     uint8_t* fileBuffer 	= Allocate(MAXINPUTFILESIZE);
     uint32_t fileSize 		= Load_data(fileBuffer);
@@ -251,7 +295,8 @@ int main(int argc, char* argv[]){
     while(true){
         uint32_t nextBufferSize =
         #if READING_FROM_SERVER
-            readDataIntoBuffer(hwBuffer);
+            readDataIntoBuffer(hwBuffer, packetBuffer, packetOffset, recvBytes);
+        	packetOffset += nextBufferSize;
         #else
             readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
             fileOffset += nextBufferSize;
@@ -280,14 +325,18 @@ int main(int argc, char* argv[]){
     Free((uint8_t*)mod_table);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
+#else
+    Free(packetBuffer);
 #endif
+    /*
     char diff_str[250];
-    sprintf(diff_str, "diff --brief -w %s %s", hostOutfileName, gold_hostOutfileName);
+    sprintf(diff_str, "diff -w %s %s", hostOutfileName, gold_hostOutfileName);
     int ret = system(diff_str);
     printf("diff_str : %s\n", diff_str);
     printf("ret: %d\n", ret);
-
-    return ret;
+*/
+    //return ret;
+    return 1;
 }//main
 
 

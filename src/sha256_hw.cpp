@@ -269,11 +269,11 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 				//#pragma HLS RESOURCE variable=hash core=AddSub_DSP
 				// Since this implementation uses little endian byte ordering and SHA uses big endian,
 				// reverse all the bytes when copying the final state to the output hash.
-#if 0
+#if 1
 				//printf("hash values: \n");
 				for(int j = 0; j < 8; j++)
 				{
-					for (i = 0; i < 4; ++i)
+					//for (i = 0; i < 4; ++i)
 					{
 						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
 						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
