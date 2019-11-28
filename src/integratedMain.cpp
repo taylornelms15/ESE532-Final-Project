@@ -39,8 +39,8 @@
 #endif
 
 
-static const char hostInfileName[] = "C:/Users/rgjus/Desktop/test.txt";
-static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_stream.txt";
+static const char hostInfileName[] = "C:/Users/rgjus/Desktop/franklin.txt";
+static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/op_franklin.txt";
 static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
@@ -161,6 +161,7 @@ unsigned int Load_data(unsigned char * Data)
 #endif
 #else
   Bytes_read = Load_data_linux(Data, hostInfileName);
+  printf("Read %d bytes\n", Bytes_read);
 #endif
   return Bytes_read;
 }
