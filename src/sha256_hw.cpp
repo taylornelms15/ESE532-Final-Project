@@ -4,9 +4,7 @@
 #include<string.h>
 #include<stdio.h>
 #include <stdint.h>
-//#include "sha_256.h"
 #include "sha256_hw.h"
-#include "common.h"
 
 #define MAXCHUNKLENGTH (MAXSIZE)
 
@@ -25,7 +23,7 @@
 #define SIG0(x) (ROTRIGHT(x,7) ^ ROTRIGHT(x,18) ^ ((x) >> 3))
 #define SIG1(x) (ROTRIGHT(x,17) ^ ROTRIGHT(x,19) ^ ((x) >> 10))
 
-void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], unsigned long long bitlen, BYTE hash[]);
+//void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], unsigned long long bitlen, BYTE hash[]);
 
 
 /*********************** FUNCTION DEFINITIONS *********************** */
@@ -33,9 +31,9 @@ void sha256_hw_final(unsigned int datalen, WORD_SHA state[8], BYTE data[64], uns
 static int counter_hw = 0;
 
 #ifdef SHA_STREAM
-void sha256_hw_transform(hls::stream<ap_uint<9>>& data, WORD_SHA state[])
+void sha256_hw_transform(hls::stream<ap_uint<9>>& data, unsigned int state[])
 {
-	static const WORD_SHA k[64] = {
+	static const unsigned int k[64] = {
 				0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
 				0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
 				0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
@@ -47,7 +45,7 @@ void sha256_hw_transform(hls::stream<ap_uint<9>>& data, WORD_SHA state[])
 			};
 #pragma HLS array_partition variable=k
 
-	WORD_SHA a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
+	unsigned int a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 //#pragma HLS array_partition variable=m
 #pragma HLS RESOURCE variable=t1 core=AddSub_DSP
 #pragma HLS RESOURCE variable=t2 core=AddSub_DSP
@@ -176,7 +174,7 @@ void sha256_hw_transform(BYTE data[], WORD_SHA state[])
 int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& hash)
 {
 //#pragma HLS allocation instances=sha256_hw_transform limit=1 function
-	WORD_SHA state[8];
+	unsigned int state[8];
 	int counter = 0, subchunk_counter = 0;
 #pragma HLS array_partition variable=state
 
@@ -200,7 +198,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 
 	ap_uint<9> byte;
 	hls::stream<ap_uint<9>> subchunk;
-#pragma HLS STREAM variable=subchunk depth=64
+#pragma HLS STREAM variable=subchunk depth=2048
 	for(uint16_t i = 1; i <= MAXCHUNKLENGTH; i++)
 	{
 //#pragma HLS dataflow
@@ -270,29 +268,37 @@ int sha256_hw_compute(hls::stream<ap_uint<9>>& data, hls::stream< uint8_t >& has
 				// Since this implementation uses little endian byte ordering and SHA uses big endian,
 				// reverse all the bytes when copying the final state to the output hash.
 #if 1
+				/*
+				for (i = 0; i < 4; ++i) {
+						hash[i]      = (state[0] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 4]  = (state[1] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 8]  = (state[2] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 12] = (state[3] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 16] = (state[4] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 20] = (state[5] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 24] = (state[6] >> (24 - i * 8)) & 0x000000ff;
+						hash[i + 28] = (state[7] >> (24 - i * 8)) & 0x000000ff;
+					}
+*/
 				//printf("hash values: \n");
 				for(int j = 0; j < 8; j++)
 				{
-					//for (i = 0; i < 4; ++i)
-					{
-						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
-						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
-						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
-						hash.write((state[j] >> (24 - i * 8)) & 0x000000ff);
-						//printf("%x ", (state[j] >> (24 - i * 8)) & 0x000000ff);
-					}
+						hash.write((state[j] >> (24 - 0 * 8)) & 0x000000ff);
+
+						hash.write((state[j] >> (24 - 1 * 8)) & 0x000000ff);
+
+						hash.write((state[j] >> (24 - 2 * 8)) & 0x000000ff);
+
+						hash.write((state[j] >> (24 - 3 * 8)) & 0x000000ff);
 				}
 #endif
 
 #endif
 			ending_byte = byte;
 
-			printf("read %d bytes from input \n", counter);
-				printf("written %d bytes to subchunk\n", subchunk_counter);
-				printf("read %d bytes from subchunk \n", counter_hw);
+			//printf("read %d bytes from input \n", counter);
+				//printf("written %d bytes to subchunk\n", subchunk_counter);
+				//printf("read %d bytes from subchunk \n", counter_hw);
 			counter_hw = 0;
 			return ending_byte;
 		}
@@ -462,7 +468,6 @@ void sha256_hw_wrapper(hls::stream<ap_uint<9>>& rabinToSHA, hls::stream< uint8_t
 	for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
 	        //#pragma HLS pipeline
 	        int endingByte = sha256_hw_compute(rabinToSHA, shaToDeduplicate);
-	        //shaToDeduplicate.write((ap_uint<9>) endingByte);
 	        if (endingByte == ENDOFFILE){
 	            return;
 	        }

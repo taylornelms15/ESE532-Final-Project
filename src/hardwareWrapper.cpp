@@ -28,7 +28,7 @@ void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &read
     readerToRabin.write(ENDOFFILE);//currently, is not keeping chunk-state between adjacent inputs. Probably cleaner this way.
     counter++;
 
-    printf("reader to rabin: %d\n", counter);
+    //printf("reader to rabin: %d\n", counter);
 }//readIntoRabin
 
 uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t output[OUTBUFFER_SIZE], uint32_t numElements){
@@ -87,8 +87,8 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     readIntoRabin(input, readerToRabin, numElements);
     rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, numElements);
     //rabin_hw_fake(readerToRabin, rabinToSHA, rabinToLZW, numElements);
-    //sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
-    sha_hw_fake(rabinToSHA, shaToDeduplicate);
+    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
+    //sha_hw_fake(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);		// TODO: Enable writing to lzwToDeduplicate
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);

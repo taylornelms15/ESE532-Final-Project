@@ -287,7 +287,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     	oidx += 1;//not counting stop byte in our oidx
     }
 
-    printf("lzw counter: %d\n", counter);
+    //printf("lzw counter: %d\n", counter);
     return endingByte;
     //output.write(0x100);
     //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
