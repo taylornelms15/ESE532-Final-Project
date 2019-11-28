@@ -187,6 +187,7 @@ void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap
         if (count >= MINSIZE) {
         	if((digest & MASK) == 0 || count >= MAXSIZE) {
         		rabinToSHA.write(ENDOFCHUNK);
+        		counter++;
         		//printf("wrote %d bytes to SHA - EOC\n", counter);
         		counter = 0;
         		rabinToLZW.write(ENDOFCHUNK);

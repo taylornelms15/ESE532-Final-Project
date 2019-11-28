@@ -129,7 +129,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 	hls::stream<ap_uint<9> > subchunk;
 	uint16_t itr;
 #pragma HLS STREAM variable=subchunk depth=2048
-	for(uint16_t i = 0; i <= MAXCHUNKLENGTH; i++)
+	for(uint16_t i = 0; i < MAXCHUNKLENGTH + 5; i++)
 	{
 //#pragma HLS dataflow
 #pragma HLS loop_tripcount min=0 avg=4000 max=8000
@@ -139,11 +139,13 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 		datalen++;
 
 
-		if (byte > 255 && datalen < 64)	/** Either end of chunk or end of file */
+		if (byte > 255)	/** Either end of chunk or end of file */
 		{
 #if 1
+			datalen--;
+
 			itr = datalen;
-			if (itr < 56) {
+			if (itr++ < 56) {
 					subchunk.write(0x80);
 					subchunk_counter++;
 					while (itr < 56){
@@ -229,6 +231,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 
 	}
 
+	printf("OUTSIDE LOOP ===== read %d bytes from input \n", counter);
 
 /*
 	printf("state variables:\n");
