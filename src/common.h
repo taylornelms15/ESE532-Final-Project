@@ -25,6 +25,7 @@ typedef unsigned short uint16_t;
 #define INBUFFER_SIZE 2000000 //2MB incoming buffer
 #define OUTBUFFER_SIZE (INBUFFER_SIZE)
 
+
 #define MAX_CHUNKS_IN_HW_BUFFER ((INBUFFER_SIZE + 1) / MINSIZE)
 
 //Codes for use with 9-bit streams to denote the end of the chunk and/or the end of the file

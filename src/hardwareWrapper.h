@@ -8,7 +8,9 @@
 
 #include "common.h"
 #include <hls_stream.h>
+
 #include <stdint.h>
+
 
 /**
  * Takes in a buffer full of data, streams it through our processing, and fills an output buffer
@@ -20,12 +22,14 @@
  * @param numElements Number of elements we'll read if we don't read the whole buffer (only relevant for last section)
  * @return Number of bytes written by this iteration of processing
  */
+
 #pragma SDS data copy(input[0:INBUFFER_SIZE], output[0:OUTBUFFER_SIZE], out_table[0:256], mod_table[0:256])
 #pragma SDS data zero_copy(tableLocation[0:SHA256TABLESIZE])
 #pragma SDS data access_pattern(input:SEQUENTIAL, output:SEQUENTIAL, tableLocation:RANDOM, out_table:RANDOM, mod_table:RANDOM)
 #pragma SDS data mem_attribute(input:PHYSICAL_CONTIGUOUS, output:PHYSICAL_CONTIGUOUS, tableLocation:PHYSICAL_CONTIGUOUS, out_table:PHYSICAL_CONTIGUOUS, mod_table:PHYSICAL_CONTIGUOUS)
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
                        uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256]);
+
 
 // INTERFACE FORMATTING
 /*
@@ -41,6 +45,7 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
  * As such, if possible, we would like to make an arbitrary split, if we can, towards the end of INBUFFER_SIZE
  * We lose a bit of veracity for chunk deduplication, but gain a hell of a lot in not having to deal with leftover data complexity
  */
+
 //rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, num_elements);
 
 

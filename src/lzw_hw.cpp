@@ -17,6 +17,10 @@
 #define KEYLEN (ROWBITS + COLBITS)
 #define HRBITS (KEYLEN + ROWBITS)//number of bits in a "hash record" (key+val pairing)
 
+//If we're using a stand-in for LZW, for debugging purposes
+#define FAKING_LZW 0
+
+int counter = 0;
 /*
 Thoughts about space:
 8k total table rows (13b)
@@ -174,6 +178,7 @@ ap_uint<ROWBITS> readFromTable(ap_uint<KEYLEN> key, ap_uint<HDEPTH> validityEntr
 
 uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &output ){
 	#pragma HLS inline
+
 	uint8_t numOutput = 0;
     ap_uint<9> valsToOutput1;
     ap_uint<9> valsToOutput2;
@@ -197,8 +202,10 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
     boundary = (boundary + 5) & 0x7;
 
     output.write(valsToOutput1);
+    counter++;
     if (numOutput == 2){
     	output.write(valsToOutput2);
+    	counter++;
     }
 
     return numOutput;
@@ -206,9 +213,32 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
 
 }//writeToOutput
 
+#if FAKING_LZW
+
+int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
+    int endingByte = ENDOFCHUNK;
+    for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
+        #pragma HLS loop_tripcount min=1024 max=6144 avg=3072
+        ap_uint<9> readChar = input.read();
+        if (readChar > 255){
+            endingByte = (int)readChar;//either ENDOFCHUNK or ENDOFFILE
+
+            break;//effectively, the return function
+        }//if end-of-stream value
+        else{
+            //output.write(readChar);
+        }
+    }//for
+
+    return endingByte;
+}
+
+#else
+
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
 	#pragma HLS array_partition variable=hashTable dim=1
 
+	counter = 0;
     resetValidityTable();
     boundary = 0;//what bit of an output byte we'd write next
     currentOverflow = 0;//stores our extra bits
@@ -221,7 +251,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
 
     ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
-		#pragma HLS loop_tripcount min=1024 max=6144 avg=2048
+		#pragma HLS loop_tripcount min=1024 max=6144 avg=3072
         #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
         if (readChar > 255){
@@ -253,18 +283,21 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     }
     if (boundary != 0){
     	output.write(currentOverflow);
+    	counter++;
     	oidx += 1;//not counting stop byte in our oidx
     }
 
+    //printf("lzw counter: %d\n", counter);
     return endingByte;
     //output.write(0x100);
     //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
 
 }//lzwCompress
 
+#endif
+
 void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uint<9> > &lzwToDeduplicate){
     for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
-        //#pragma HLS pipeline
         int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
         lzwToDeduplicate.write((ap_uint<9>) endingByte);
         if (endingByte == ENDOFFILE){
