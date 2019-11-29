@@ -17,6 +17,7 @@ static uint32_t currentIndex = 0;
 // If hash key down to 6 bits (64 buckets), ideal would be 2 rows per bucket
 // If our hashed value were "3", would pull rows at indices 6 and 7
 
+#define SIMPLER_XOR 1
 
 /**
  * Makes a hash of the incoming SHA256 value
@@ -29,6 +30,15 @@ ap_uint<HASHBITS> hashShaKey(const uint8_t input[SHA256_SIZE]){
     ap_uint<HASHBITS> retval = 0;
     uint8_t currentHashBit  = 0;
 
+#if SIMPLER_XOR
+    hashkeyloop:for(uint8_t i = 0; i < SHA256_SIZE / 2; i++){
+        uint8_t evenbyte    = input[2 * i];
+        uint8_t oddbyte     = input[2 * i + 1];
+        retval              ^= ((ap_uint<HASHBITS>) evenbyte) << 0;
+        retval              ^= ((ap_uint<HASHBITS>) oddbyte)  << 8;
+    }//hashkeyloop
+
+#else
     hashkeyloop:for(uint8_t i = 0; i < SHA256_SIZE; i++){
         #pragma HLS unroll
         uint8_t currentShaByte = input[i];
@@ -45,6 +55,7 @@ ap_uint<HASHBITS> hashShaKey(const uint8_t input[SHA256_SIZE]){
             currentHashBit = (currentHashBit + 1) % HASHBITS;
         }//for j (per sha byte's bit)
     }//for i (per sha byte)
+#endif
 
     return retval;
     
@@ -110,13 +121,13 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
     uint32_t offset = getDramOffset(key);
 
     int rowOffset = -1;
-    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i++){
         #pragma HLS unroll
         uint32_t candIndex;
-        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
         memcpy4B(&candIndex, indexPortion);
         if (candIndex >= SHANOTFOUND){
-            rowOffset = i;
+            rowOffset = i * BYTES_PER_ROW;
             break;
         }//found a free part of the table
     }//for each candidate
@@ -133,7 +144,7 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
 /**
  * Pulls all possible records of our hash-index pair from DRAM memory
  */
-void pullRecordsFromTable(const uint8_t* tableLocation, uint8_t* destination, ap_uint<HASHBITS> key){
+void pullRecordsFromTable(const uint8_t* tableLocation, uint8_t destination[DRAM_PULL_SIZE], ap_uint<HASHBITS> key){
     #pragma HLS inline
     uint32_t offset = getDramOffset(key);
 
@@ -164,12 +175,13 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 
 
     uint32_t indexVal = SHANOTFOUND;
-    findequalrecordloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findequalrecordloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i++){
         #pragma HLS unroll
-        uint8_t* shaPortion = &candidates[i];
-        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        uint8_t* shaPortion = &candidates[i * BYTES_PER_ROW];
+        uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
         if (shaRecordsEqual(input, shaPortion)){
             memcpy4B(&indexVal, indexPortion);
+            break;//unnecessary?
         }//if
     }//for each candidate
 
@@ -183,8 +195,6 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
     }//else
 
 
-
-    return 0;
 }//indexForShaValue_HW
 
 
