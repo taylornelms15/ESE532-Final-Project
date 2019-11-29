@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <pthread.h>
 
 
 #include "common.h"
@@ -47,6 +48,8 @@ char deviceInfileName[50];
 static const char deviceOutfileName[] = "compress.dat";
 unsigned long long *out_table;
 unsigned long long *mod_table;
+uint32_t recvBytes = 0;
+int8_t go = 0;
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -88,10 +91,11 @@ void Free(uint8_t* Frame){
 }
 
 #if READING_FROM_SERVER
-unsigned int read_NW(unsigned char *Data) {
+void *read_NW(void *arg) {
 	ESE532_Server Server = ESE532_Server();
 	Server.setup_server();
-	unsigned int bytes_read = 0;
+	unsigned char *Data = (unsigned char *)arg;
+//	unsigned int bytes_read = 0;
 	unsigned int currentIndex = 0;
 	uint8_t server_rd_stp = 0;
 	while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
@@ -105,16 +109,18 @@ unsigned int read_NW(unsigned char *Data) {
 	        if((pkt[1] & 0x80) == 128)
 	          server_rd_stp = 1;
 	        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) & 0x7fff) ;
-	        printf("pkt[0] : %x\n", pkt[0]);
+	     /*   printf("pkt[0] : %x\n", pkt[0]);
 			printf("pkt[1] : %x\n", pkt[1]);
-	        printf("pkt len: %d\n", thisPacketBytes);
+	        printf("pkt len: %d\n", thisPacketBytes);*/
 	        memcpy(Data + currentIndex, &pkt[HEADER], thisPacketBytes);
 	        currentIndex += thisPacketBytes;
-	        bytes_read += thisPacketBytes;
-
+	        recvBytes += thisPacketBytes;
+	        if(recvBytes > INBUFFER_SIZE)
+	        	go = 1;
 	    }//while
-
-	return bytes_read;
+	go = 1;
+	printf("Exiting NW thread\n");
+	pthread_exit(NULL);
 }
 #endif
 
@@ -278,22 +284,55 @@ int main(int argc, char* argv[]){
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(2, &cpuset);
+
+
 #if READING_FROM_SERVER
     uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
-    uint32_t recvBytes =  	read_NW(packetBuffer);
+    pthread_t nwId;
+
+    int thread_ret = pthread_create(&nwId, NULL, &read_NW, packetBuffer);
+    if(thread_ret < 0) {
+        printf("pthread create error\n");
+        exit(0);
+    }
+    thread_ret = pthread_setaffinity_np(nwId, sizeof(cpu_set_t), &cpuset);
+        if(thread_ret < 0) {
+        	printf("pthread set affinity error\n");
+        	exit(0);
+        }
+   //   	read_NW(packetBuffer);
     uint32_t packetOffset = 0;
+    uint8_t measure_flag = 0;
 #else
     uint8_t* fileBuffer 	= Allocate(MAXINPUTFILESIZE);
     uint32_t fileSize 		= Load_data(fileBuffer);
     uint32_t fileOffset 	= 0;
 #endif
-	
-    #if MEASURING_LATENCY
-    unsigned long long overallStart = sds_clock_counter();
-    #endif
 
-    while(true){
-        uint32_t nextBufferSize =
+unsigned long long overallStart;
+
+#if !READING_FROM_SERVER
+	#if MEASURING_LATENCY
+        		overallStart = sds_clock_counter();
+	#endif
+#endif
+
+    while(true) {
+#if READING_FROM_SERVER
+    	if(go == 0)
+        	continue;
+
+	#if MEASURING_LATENCY
+        	if(measure_flag == 0) {
+        		overallStart = sds_clock_counter();
+        		measure_flag = 1;
+        	}
+	#endif
+#endif
+    	uint32_t nextBufferSize =
         #if READING_FROM_SERVER
             readDataIntoBuffer(hwBuffer, packetBuffer, packetOffset, recvBytes);
         	packetOffset += nextBufferSize;
@@ -327,14 +366,20 @@ int main(int argc, char* argv[]){
     Free(fileBuffer);
 #else
     Free(packetBuffer);
+    pthread_join(nwId, NULL);
 #endif
+  /*
     char diff_str[250];
     sprintf(diff_str, "diff -w %s %s", hostOutfileName, gold_hostOutfileName);
     int ret = system(diff_str);
     printf("diff_str : %s\n", diff_str);
     printf("ret: %d\n", ret);
-
-    return ret;
+*/
+#if MEASURING_LATENCY
+    uint32_t throughputMb = (recvBytes * 8 * 1000 * 1.2) / (overallEnd - overallStart);
+    printf("throughput achieved : %d Mbps\n", throughputMb);
+#endif
+    return 0;
 }//main
 
 

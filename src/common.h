@@ -46,6 +46,7 @@ typedef unsigned short uint16_t;
 
 #define __linux__
 
-
+#define MAXPKTSIZE 4096
+#define HEADER 2
 
 #endif
