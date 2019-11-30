@@ -51,7 +51,6 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
             else{
                 valToWrite = 0;
                 foundEnd = 1;
-                numOutput++;//now reflects length, not index
             }//else
         }
         output[i] = valToWrite;

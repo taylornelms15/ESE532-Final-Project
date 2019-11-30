@@ -1,5 +1,4 @@
 // Server side implementation of UDP client-server model
-#ifdef READING_FROM_SERVER
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -75,4 +74,3 @@ int ESE532_Server::get_packet(unsigned char* buffer)
 	return bytes_read;
 }
 
-#endif
