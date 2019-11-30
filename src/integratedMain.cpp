@@ -50,6 +50,12 @@ unsigned long long *out_table;
 unsigned long long *mod_table;
 uint32_t recvBytes = 0;
 int8_t go = 0;
+uint8_t go_write = 0;
+uint8_t end_write = 0;
+uint32_t dataSize = 0;
+uint8_t writeFileBuf[OUTBUFFER_SIZE];
+uint8_t* output;
+
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
 
@@ -190,6 +196,36 @@ unsigned int Store_Data_linux(uint8_t* Data, uint32_t dataSize, const char* file
   return Bytes_written;
 }
 
+void *Store_Data_linux_thread(void *arg){
+  unsigned int Bytes_written;
+  printf("Inside store data linux thread\n");
+//  uint32_t dataSize = *(uint32_t *)arg;
+  FILE * File = fopen(deviceOutfileName, "wb");
+  if (File == NULL){
+      printf("Could not open output file\n");
+      Exit_with_error();
+  }
+
+  while(end_write != 2) {
+	  if(go_write == 0)
+		  continue;
+	  printf("dataSize is %d\n", dataSize);
+	  Bytes_written = fwrite(writeFileBuf, 1, dataSize, File);
+	  if (Bytes_written < 1){
+		  printf("None written, result %d\n", Bytes_written);
+		  Exit_with_error();
+	  }
+	  go_write = 0;
+  }
+
+  if (fclose(File) != 0)
+    Exit_with_error();
+
+  printf("Stored data successfully\n");
+  printf("Exiting writeFile thread\n");
+  pthread_exit(NULL);
+}
+
 unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
   unsigned int Bytes_written;
 #ifdef __SDSCC__
@@ -273,7 +309,7 @@ int main(int argc, char* argv[]){
     printf("Allocated chunkTable at %p\n", chunkTable);
     uint8_t* hwBuffer = Allocate(INBUFFER_SIZE);
     printf("Allocated hardware processing buffer at %p\n", hwBuffer);
-    uint8_t* output = Allocate(MAXINPUTFILESIZE);//will eventually write this to a file
+    output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
     out_table = (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
@@ -288,10 +324,14 @@ int main(int argc, char* argv[]){
     CPU_ZERO(&cpuset);
     CPU_SET(2, &cpuset);
 
+    cpu_set_t cpuset2;
+    CPU_ZERO(&cpuset2);
+    CPU_SET(3, &cpuset2);
 
 #if READING_FROM_SERVER
     uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
     pthread_t nwId;
+    pthread_t writeFileId;
 
     int thread_ret = pthread_create(&nwId, NULL, &read_NW, packetBuffer);
     if(thread_ret < 0) {
@@ -303,6 +343,19 @@ int main(int argc, char* argv[]){
         	printf("pthread set affinity error\n");
         	exit(0);
         }
+
+     thread_ret = pthread_create(&writeFileId, NULL, &Store_Data_linux_thread, packetBuffer);
+       if(thread_ret < 0) {
+          printf("pthread create error\n");
+          exit(0);
+        }
+     thread_ret = pthread_setaffinity_np(writeFileId, sizeof(cpu_set_t), &cpuset2);
+        if(thread_ret < 0) {
+            printf("pthread set affinity error\n");
+            exit(0);
+        }
+
+
    //   	read_NW(packetBuffer);
     uint32_t packetOffset = 0;
     uint8_t measure_flag = 0;
@@ -341,10 +394,15 @@ unsigned long long overallStart;
             fileOffset += nextBufferSize;
         #endif
         if (nextBufferSize == 0){
-            break;
+            end_write = 2;
+        	break;
         }
         printf("Starting processing on buffer of size %d\n", nextBufferSize);
-        uint32_t hwOutputSize = processBuffer(hwBuffer, output + outputOffset, chunkTable, nextBufferSize, out_table, mod_table);
+        uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize, out_table, mod_table);
+        memcpy(writeFileBuf, output, hwOutputSize);
+        dataSize = hwOutputSize;
+        while(go_write == 1);
+        	go_write = 1;
         outputOffset += hwOutputSize;
         printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
@@ -354,8 +412,8 @@ unsigned long long overallStart;
     printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
 
-    Store_Data(output, outputOffset + 1);
-    printf("Stored data successfully\n");
+ //   Store_Data(output, outputOffset + 1);
+//    printf("Stored data successfully\n");
 
     Free(chunkTable);
     Free(hwBuffer);
@@ -367,6 +425,7 @@ unsigned long long overallStart;
 #else
     Free(packetBuffer);
     pthread_join(nwId, NULL);
+    pthread_join(writeFileId, NULL);
 #endif
   /*
     char diff_str[250];
@@ -376,6 +435,7 @@ unsigned long long overallStart;
     printf("ret: %d\n", ret);
 */
 #if MEASURING_LATENCY
+    printf("recvBytes : %d Bytes\n", recvBytes);
     uint32_t throughputMb = (recvBytes * 8 * 1000 * 1.2) / (overallEnd - overallStart);
     printf("throughput achieved : %d Mbps\n", throughputMb);
 #endif

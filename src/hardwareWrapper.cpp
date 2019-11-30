@@ -6,7 +6,6 @@
 #include "hardwareWrapper.h"
 #include "deduplicate_hw.h"
 #include "lzw_hw.h"
-#include "standinfuncts.h"
 #include "sha256_hw.h"
 #include "rabin.h"
 

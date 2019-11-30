@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "rabin.h"
-#include "standinfuncts.h"
 
 #define MASK ((1<<AVERAGE_BITS)-1)
 #define POL_SHIFT (POLYNOMIAL_DEGREE-8)
