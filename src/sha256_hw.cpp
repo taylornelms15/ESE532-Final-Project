@@ -1,9 +1,9 @@
 
 
-#include <stdlib.h>
-#include<string.h>
-#include<stdio.h>
-#include <stdint.h>
+//#include <stdlib.h>
+//#include<string.h>
+//#include<stdio.h>
+//#include <stdint.h>
 #include "sha256_hw.h"
 
 #define MAXCHUNKLENGTH (MAXSIZE)
@@ -231,7 +231,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 
 	}
 
-	printf("OUTSIDE LOOP ===== read %d bytes from input \n", counter);
+	//printf("OUTSIDE LOOP ===== read %d bytes from input \n", counter);
 
 /*
 	printf("state variables:\n");

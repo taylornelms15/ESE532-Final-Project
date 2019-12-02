@@ -1,7 +1,7 @@
 #ifndef _RABIN_H
 #define _RABIN_H
 
-#include <stdint.h>
+//#include <stdint.h>
 #include "common.h"
 #include <hls_stream.h>
 
