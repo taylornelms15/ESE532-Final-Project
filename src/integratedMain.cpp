@@ -17,11 +17,16 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
+#define EMULATING_SERVER 1
 #define READING_FROM_SERVER 1
 //#define __linux__
 
 #if READING_FROM_SERVER
+#if EMULATING_SERVER
+#include "serverEm.h"
+#else
 #include "server.h"
+#endif
 #endif
 
 
@@ -99,15 +104,24 @@ void Free(uint8_t* Frame){
 #if READING_FROM_SERVER
 void *read_NW(void *arg) {
 	ESE532_Server Server = ESE532_Server();
+    #if EMULATING_SERVER
+    Server.setup_server(4096, deviceInfileName);
+	#else
 	Server.setup_server();
+    #endif
 	unsigned char *Data = (unsigned char *)arg;
 //	unsigned int bytes_read = 0;
 	unsigned int currentIndex = 0;
 	uint8_t server_rd_stp = 0;
+	printf("read_NW thread\n");
 	while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
 	      	uint8_t pkt[MAXPKTSIZE+HEADER];
 	        uint16_t thisPacketBytes = Server.get_packet(pkt);
+            #if EMULATING_SERVER
+	        if (thisPacketBytes < 1){
+            #else
 	        if (thisPacketBytes < 0){
+            #endif
 	            printf("Read %d total bytes from network\n", currentIndex + 1);
 	            break;
 	        }//end of transmission
@@ -313,9 +327,9 @@ int main(int argc, char* argv[]){
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
     out_table = (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
-    printf("Allocated output memory location at %p\n", out_table);
+    printf("Allocated out_table memory location at %p\n", out_table);
     mod_table =  (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
-    printf("Allocated output memory location at %p\n", mod_table);
+    printf("Allocated mod_table memory location at %p\n", mod_table);
 
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
@@ -333,6 +347,7 @@ int main(int argc, char* argv[]){
     pthread_t nwId;
     pthread_t writeFileId;
 
+    //calls read_NW in separate thread
     int thread_ret = pthread_create(&nwId, NULL, &read_NW, packetBuffer);
     if(thread_ret < 0) {
         printf("pthread create error\n");
@@ -344,6 +359,7 @@ int main(int argc, char* argv[]){
         	exit(0);
         }
 
+     //calls Store_Data_linux_thread in a separate thread
      thread_ret = pthread_create(&writeFileId, NULL, &Store_Data_linux_thread, packetBuffer);
        if(thread_ret < 0) {
           printf("pthread create error\n");
