@@ -45,7 +45,7 @@ typedef unsigned short uint16_t;
 #define NUMHASHBUCKETS (1 << HASHBITS)
 #define SHA256TABLESIZE (NUMHASHBUCKETS * DRAM_PULL_SIZE)
 
-#define __linux__
+
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
