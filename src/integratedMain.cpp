@@ -105,7 +105,6 @@ void *read_NW(void *arg) {
 	Server.setup_server();
 
 	unsigned char *Data = (unsigned char *)arg;
-//	unsigned int bytes_read = 0;
 	unsigned int currentIndex = 0;
 	uint8_t server_rd_stp = 0;
 	printf("read_NW thread\n");
