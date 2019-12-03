@@ -17,16 +17,11 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
-#define EMULATING_SERVER 1
 #define READING_FROM_SERVER 1
 //#define __linux__
 
 #if READING_FROM_SERVER
-#if EMULATING_SERVER
-#include "serverEm.h"
-#else
 #include "server.h"
-#endif
 #endif
 
 
@@ -102,13 +97,13 @@ void Free(uint8_t* Frame){
 }
 
 #if READING_FROM_SERVER
+//##################
+//READ THREAD
+//##################
 void *read_NW(void *arg) {
 	ESE532_Server Server = ESE532_Server();
-    #if EMULATING_SERVER
-    Server.setup_server(4096, deviceInfileName);
-	#else
 	Server.setup_server();
-    #endif
+
 	unsigned char *Data = (unsigned char *)arg;
 //	unsigned int bytes_read = 0;
 	unsigned int currentIndex = 0;
@@ -117,11 +112,7 @@ void *read_NW(void *arg) {
 	while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
 	      	uint8_t pkt[MAXPKTSIZE+HEADER];
 	        uint16_t thisPacketBytes = Server.get_packet(pkt);
-            #if EMULATING_SERVER
-	        if (thisPacketBytes < 1){
-            #else
 	        if (thisPacketBytes < 0){
-            #endif
 	            printf("Read %d total bytes from network\n", currentIndex + 1);
 	            break;
 	        }//end of transmission
@@ -133,6 +124,7 @@ void *read_NW(void *arg) {
 			printf("pkt[1] : %x\n", pkt[1]);
 	        printf("pkt len: %d\n", thisPacketBytes);*/
 	        memcpy(Data + currentIndex, &pkt[HEADER], thisPacketBytes);
+
 	        currentIndex += thisPacketBytes;
 	        recvBytes += thisPacketBytes;
 	        if(recvBytes > INBUFFER_SIZE)
@@ -142,6 +134,9 @@ void *read_NW(void *arg) {
 	printf("Exiting NW thread\n");
 	pthread_exit(NULL);
 }
+//##################
+// END THREAD
+//##################
 #endif
 
 unsigned int Load_data_linux(unsigned char*  Data, const char* fileName){
@@ -210,6 +205,9 @@ unsigned int Store_Data_linux(uint8_t* Data, uint32_t dataSize, const char* file
   return Bytes_written;
 }
 
+//##################
+//STORE THREAD
+//##################
 void *Store_Data_linux_thread(void *arg){
   unsigned int Bytes_written;
   printf("Inside store data linux thread\n");
@@ -239,6 +237,9 @@ void *Store_Data_linux_thread(void *arg){
   printf("Exiting writeFile thread\n");
   pthread_exit(NULL);
 }
+//##################
+// END THREAD
+//##################
 
 unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
   unsigned int Bytes_written;

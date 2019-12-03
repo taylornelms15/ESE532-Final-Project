@@ -6,8 +6,7 @@
 #include "chunkdict_hw.h"
 #include "deduplicate_hw.h"
 
-
-static ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1];//4 extra for the header, 1 extra for an ending ENDOFCHUNK or ENDOFFILE
+static ap_uint<9> lzwOutputBuffer[LZWMAXSIZE + 4 + 1];//4 extra for the header, 1 extra for an ending ENDOFCHUNK or ENDOFFILE
 
 /**
  * Reads the entire incoming buffer from LZW, writes it into our output buffer
@@ -17,7 +16,7 @@ static ap_uint<9> lzwOutputBuffer[MAXSIZE + 4 + 1];//4 extra for the header, 1 e
 uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, uint8_t wasEndOfFile[1]){
     #pragma HLS inline
 	ap_uint<9>* buffer = &lzwOutputBuffer[4];
-    for(uint32_t i = 0; i < MAXSIZE + 1; i++){
+    for(uint32_t i = 0; i < LZWMAXSIZE + 1; i++){
         #pragma HLS pipeline
         ap_uint<9> nextVal = lzwToDeduplicate.read();
         if (nextVal == ENDOFCHUNK || nextVal == ENDOFFILE){
@@ -78,7 +77,7 @@ uint32_t fillHeaderBuffer(uint8_t foundSha, int shaIndex, uint32_t lzwChunkSize,
 void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
                   uint32_t                  packetSendSize){
     #pragma HLS inline
-    for(uint32_t i = 0; i < MAXSIZE + 4 + 1; i++){
+    for(uint32_t i = 0; i < LZWMAXSIZE + 4 + 1; i++){
         #pragma HLS pipeline
         ap_uint<9> nextVal = lzwOutputBuffer[i];
         if (i < packetSendSize){
