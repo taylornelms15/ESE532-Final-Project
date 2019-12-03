@@ -452,8 +452,10 @@ unsigned long long overallStart;
 */
 #if MEASURING_LATENCY
     printf("recvBytes : %d Bytes\n", recvBytes);
-    uint32_t throughputMb = (recvBytes * 8 * 1000 * 1.2) / (overallEnd - overallStart);
-    printf("throughput achieved : %d Mbps\n", throughputMb);
+    double timeTaken = (overallEnd - overallStart) / (1.2 * 1000000000);//in seconds
+    double numMegabits = recvBytes * 8.0 / 1000000.0;//using 1MB=1e6, rather than 2^20, here
+    float throughputMb = numMegabits / timeTaken;
+    printf("throughput achieved : %f Mbps\n", throughputMb);
 #endif
     return 0;
 }//main
