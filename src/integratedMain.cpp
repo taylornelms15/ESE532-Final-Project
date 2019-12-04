@@ -17,7 +17,7 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
-#define READING_FROM_SERVER 0
+#define READING_FROM_SERVER 1
 //#define __linux__
 
 #if READING_FROM_SERVER
