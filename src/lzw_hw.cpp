@@ -19,7 +19,10 @@
 
 
 ///Counter to keep track of how many total writes we're doing
-int counter = 0;
+int counter_rd = 0;
+int counter_wr = 0;
+int chunknumLZW = 0;
+
 
 static const uint8_t rindBox[256] = {
   //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -191,10 +194,10 @@ uint8_t writeToOutput(const ap_uint<ROWBITS> val, hls::stream< ap_uint<9> > &out
     boundary = (boundary + 5) & 0x7;
 
     output.write(valsToOutput1);
-    counter++;
+    counter_wr++;
     if (numOutput == 2){
     	output.write(valsToOutput2);
-    	counter++;
+    	counter_wr++;
     }
 
     return numOutput;
@@ -214,7 +217,8 @@ but will not write it; returns it instead for parent function to write out
 int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &output){
 	#pragma HLS array_partition variable=hashTable dim=1
 
-	counter = 0;
+    counter_rd = 0;
+	counter_wr = 0;
     resetValidityTable();
     boundary = 0;//what bit of an output byte we'd write next
     currentOverflow = 0;//stores our extra bits
@@ -226,10 +230,12 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     int endingByte = ENDOFCHUNK;
 
     ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
+    counter_rd++;
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
 		#pragma HLS loop_tripcount min=1024 max=6144 avg=3072
         #pragma HLS pipeline II=8//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
+        counter_rd++;
         if (readChar > 255){
             endingByte = (int)readChar;//either ENDOFCHUNK or ENDOFFILE
             oidx += writeToOutput(curTableRow, output);
@@ -259,14 +265,11 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     }
     if (boundary != 0){
     	output.write(currentOverflow);
-    	counter++;
+    	counter_wr++;
     	oidx += 1;//not counting stop byte in our oidx
     }
 
-    //printf("lzw counter: %d\n", counter);
     return endingByte;
-    //output.write(0x100);
-    //return oidx + 4;//not doing this version; instead, returning ENDOFCHUNK or ENDOFFILE
 
 }//lzwCompress
 
@@ -279,13 +282,22 @@ The final chunk is followed by ENDOFFILE
 @param lzwToDeduplicate     Output stream to our deduplication function
 */
 void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uint<9> > &lzwToDeduplicate){
+    chunknumLZW = 0;
     for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){
+        chunknumLZW++;
         int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
         lzwToDeduplicate.write((ap_uint<9>) endingByte);
+        counter_wr++;
+        HLS_PRINTF("LZW\t%d\tR RABIN %d\n", chunknumLZW, counter_rd);
         if (endingByte == ENDOFFILE){
+            HLS_PRINTF("LZW\t%d\tW DEDUP %d EOF\n", chunknumLZW, counter_wr);
             return;
         }
+        else{
+            HLS_PRINTF("LZW\t%d\tW DEDUP %d EOC\n", chunknumLZW, counter_wr);
+        }
     }
+    HLS_PRINTF("%d\t=================END OF THE FUCKING LOOP ALL HANDS ON DECK BITCHES==================\n", chunknumLZW);
 }
 
 

@@ -40,8 +40,8 @@
 #endif
 
 
-static const char hostInfileName[] = "/c/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.txt";
-static const char hostOutfileName[] = "/c/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.compress";
+static const char hostInfileName[] = "C:/Users/taylo/csworkspace/ese532/final/Testfiles/linuzPartial.dat";
+static const char hostOutfileName[] = "C:/Users/taylo/csworkspace/ese532/final/Testfiles/linuzPartial.compress";
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
 static const char deviceOutfileName[] = "compress.dat";
@@ -352,6 +352,7 @@ int main(int argc, char* argv[]){
     mod_table = AllocateULL(256);
     printf("Allocated mod_table memory location at %p\n", mod_table);
 
+
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
@@ -438,10 +439,14 @@ unsigned long long overallStart;
         }
         printf("Starting processing on buffer of size %d\n", nextBufferSize);
         uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize, out_table, mod_table);
+#if READING_FROM_SERVER
         memcpy(writeFileBuf, output, hwOutputSize);
         dataSize = hwOutputSize;
         while(go_write == 1);
         	go_write = 1;
+#else
+
+#endif
         outputOffset += hwOutputSize;
         printf("Processed buffer, ending size %d\n", hwOutputSize);
     }

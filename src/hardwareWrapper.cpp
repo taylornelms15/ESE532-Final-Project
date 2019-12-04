@@ -9,6 +9,7 @@
 #include "sha256_hw.h"
 #include "rabin.h"
 
+int counter_Hout = 0;
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
 
@@ -43,6 +44,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
         }
         else{
             ap_uint<9> nextByte = deduplicateToOutput.read();
+            counter_Hout++;
             if (nextByte < 256){
                 valToWrite = (uint8_t) nextByte;
                 numOutput++;
@@ -56,7 +58,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 
     }//for
 
-
+    HLS_PRINTF("OUT\t\tR DEDUP %d\n", counter_Hout);
     return numOutput;
 
 }//finalOutput
@@ -84,8 +86,8 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);
     rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, numElements);
-    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
-    lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);		// TODO: Enable writing to lzwToDeduplicate
+    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);
+    lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
     deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 

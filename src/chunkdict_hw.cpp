@@ -110,18 +110,21 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
     uint32_t offset = getDramOffset(key);
 
     int rowOffset = -1;
-    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i ++){
         #pragma HLS unroll
         uint32_t candIndex;
-        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
         memcpy4B(&candIndex, indexPortion);
         if (candIndex >= SHANOTFOUND){
-            rowOffset = i;
+            rowOffset = i * BYTES_PER_ROW;
             break;
         }//found a free part of the table
     }//for each candidate
     if (rowOffset < 0){
         //TODO: handle a hash overflow here!!!!!
+        HLS_PRINTF("ERROR\tHash collision on CHUNKDICT!%d\n", 0);
+        currentIndex++;
+        return;//don't store, just eat the badness of messing it all up
     }//if hash overflow
 
     uint32_t storageOffset = offset + rowOffset;

@@ -22,7 +22,7 @@
 #define OUTBUFFER_SIZE (INBUFFER_SIZE)
 
 
-#define MAX_CHUNKS_IN_HW_BUFFER ((INBUFFER_SIZE + 1) / MINSIZE)
+#define MAX_CHUNKS_IN_HW_BUFFER (1 + (INBUFFER_SIZE + 1) / MINSIZE)
 
 //Codes for use with 9-bit streams to denote the end of the chunk and/or the end of the file
 #define ENDOFCHUNK  256
@@ -45,5 +45,18 @@
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
+
+//this helps our HLS_PRINTF function work
+#ifdef __linux__
+#define HLS_PRINTF(format, ...) ()
+#else
+#include <stdio.h>
+#define HLS_PRINTF(format, ...) printf(format, __VA_ARGS__)
+#endif
+
+
+
+
+
 
 #endif

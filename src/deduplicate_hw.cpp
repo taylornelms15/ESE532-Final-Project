@@ -6,6 +6,12 @@
 #include "chunkdict_hw.h"
 #include "deduplicate_hw.h"
 
+int counter_SHA = 0;
+int counter_LZW = 0;
+int counter_Dwr = 0;
+int counter_Dtot = 0;
+int chunknumDedup = 0;
+
 static ap_uint<9> lzwOutputBuffer[LZWMAXSIZE + 4 + 1];//4 extra for the header, 1 extra for an ending ENDOFCHUNK or ENDOFFILE
 
 /**
@@ -19,6 +25,7 @@ uint32_t readFromLzw(hls::stream< ap_uint<9> > &lzwToDeduplicate, uint8_t wasEnd
     for(uint32_t i = 0; i < LZWMAXSIZE + 1; i++){
         #pragma HLS pipeline
         ap_uint<9> nextVal = lzwToDeduplicate.read();
+        counter_LZW++;
         if (nextVal == ENDOFCHUNK || nextVal == ENDOFFILE){
             buffer[i] = nextVal;
             if (nextVal == ENDOFFILE) wasEndOfFile[0] = 1;
@@ -37,6 +44,7 @@ void readFromSha(hls::stream< uint8_t > &shaToDeduplicate, uint8_t shaBuffer[SHA
     #pragma HLS inline
     for (uint8_t i = 0; i < SHA256_SIZE; i++){
         uint8_t nextVal = shaToDeduplicate.read();
+        counter_SHA++;
         shaBuffer[i] = nextVal;
     }//for
 }
@@ -82,6 +90,8 @@ void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
         ap_uint<9> nextVal = lzwOutputBuffer[i];
         if (i < packetSendSize){
             deduplicateToOutput.write(nextVal);
+            counter_Dwr++;
+            counter_Dtot++;
         }
     }//for
 
@@ -93,11 +103,15 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
                     hls::stream< ap_uint<9> > &deduplicateToOutput,
                     uint8_t tableLocation[SHA256TABLESIZE]){
 
-
+    chunknumDedup = 0;
     uint8_t shaBuffer[SHA256_SIZE];
     uint8_t wasEndOfFile[1] = {0};//keeps track of if the previous chunk ended with ENDOFFILE, and can be used as an inout variable
 
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
+        counter_SHA = 0;
+        counter_LZW = 0;
+        counter_Dwr = 0;
+        chunknumDedup++;
 
         //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
         uint32_t packetSize = readFromLzw(lzwToDeduplicate, wasEndOfFile);//don't bother giving it the first 4 header bytes
@@ -117,7 +131,12 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
 
         outputPacket(deduplicateToOutput, packetSendSize);
 
+        //HLS_PRINTF("DEDUP\t%d\tR SHA %d\n", chunknumDedup, counter_SHA);
+        HLS_PRINTF("DEDUP\t%d\tR LZW %d\n", chunknumDedup, counter_LZW);
+        HLS_PRINTF("DEDUP\t%d\tW OUT %d\n", chunknumDedup, counter_Dwr);
+
         if (wasEndOfFile[0]){
+            HLS_PRINTF("DEDUP\t%d\tW TOTAL %d\n", chunknumDedup, counter_Dtot);
             return;
         }//if the last run was our final one
 

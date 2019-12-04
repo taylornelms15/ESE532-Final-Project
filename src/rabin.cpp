@@ -11,6 +11,8 @@
 
 struct chunk_t last_chunk;
 
+int chunknumRabin = 0;
+
 static bool tables_initialized = false;
 /*unsigned long long mod_table[256];
 unsigned long long out_table[256];
@@ -130,6 +132,7 @@ void rabin_reset(struct rabin_t *h) {
 void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap_uint<9> > &rabinToSHA, hls::stream<ap_uint<9> > &rabinToLZW, unsigned long long out_table[256], unsigned long long mod_table[256], uint32_t len) {
 
 	int counter = 0;
+	chunknumRabin = 0;
     uint8_t wpos = 0;
     uint64_t digest = 0;
     signed int count = 0;
@@ -175,21 +178,26 @@ void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap
         	count++;
         }
         rabinToSHA.write(val);
-        counter++;
         rabinToLZW.write(val);
+        counter++;
         if(val == ENDOFFILE) {
-        	//printf("wrote %d bytes to SHA - EOF\n", counter);
-           break;
+            chunknumRabin++;
+            HLS_PRINTF("RABIN\t%d\tW SHA %d EOF\n", chunknumRabin, counter);
+            HLS_PRINTF("RABIN\t%d\tW LZW %d EOF\n", chunknumRabin, counter);
+            break;
         }
         //chunk[i] = b;
 
         if (count >= MINSIZE) {
         	if((digest & MASK) == 0 || count >= MAXSIZE) {
         		rabinToSHA.write(ENDOFCHUNK);
+                rabinToLZW.write(ENDOFCHUNK);
         		counter++;
-        		//printf("wrote %d bytes to SHA - EOC\n", counter);
+        		chunknumRabin++;
+                HLS_PRINTF("RABIN\t%d\tW SHA %d EOC\n", chunknumRabin, counter);
+                HLS_PRINTF("RABIN\t%d\tW LZW %d EOC\n", chunknumRabin, counter);
         		counter = 0;
-        		rabinToLZW.write(ENDOFCHUNK);
+
 
        //     last_chunk_length = count;
         		count = 0;
