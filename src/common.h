@@ -19,6 +19,7 @@ typedef unsigned long uint64_t;
 
 #define MINSIZE (1 * 1024)
 #define MAXSIZE (6 * 1024)
+#define LZWMAXSIZE ((int)(MAXSIZE * 13.0 / 8.0))
 
 #define MAXINPUTFILESIZE (200 * 1024 * 1024)//200MB
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
