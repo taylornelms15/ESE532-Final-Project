@@ -239,7 +239,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 		printf("%u ", state[i]);
 	printf("\n");
 */
-
+	return ENDOFFILE;//Shouldn't get here; will make the compiler happier in HLS though
 }
 
 void sha256_hw_wrapper(hls::stream<ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate)

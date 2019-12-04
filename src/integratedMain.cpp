@@ -17,7 +17,7 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
-#define READING_FROM_SERVER 1
+#define READING_FROM_SERVER 0
 //#define __linux__
 
 #if READING_FROM_SERVER
@@ -40,9 +40,8 @@
 #endif
 
 
-static const char hostInfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.txt";
-static const char hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.compress";
-static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
+static const char hostInfileName[] = "/c/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.txt";
+static const char hostOutfileName[] = "/c/Users/taylo/csworkspace/ese532/final/Testfiles/LittlePrince.compress";
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
 static const char deviceOutfileName[] = "compress.dat";
@@ -88,7 +87,29 @@ uint8_t* Allocate(int Size){
     return Frame;
 }
 
+unsigned long long* AllocateULL(int Size){
+    unsigned long long* Frame = (unsigned long long*)
+#ifdef __SDSCC__
+    sds_alloc(Size * sizeof(unsigned long long));
+#else
+    malloc(Size * sizeof(unsigned long long));
+#endif
+    if (Frame == NULL){
+        printf("ERROR: Could not allocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    return Frame;
+}
+
 void Free(uint8_t* Frame){
+#ifdef __SDSCC__
+    sds_free(Frame);
+#else
+    free(Frame);
+#endif
+}
+
+void FreeULL(unsigned long long* Frame){
 #ifdef __SDSCC__
     sds_free(Frame);
 #else
@@ -326,14 +347,15 @@ int main(int argc, char* argv[]){
     output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
-    out_table = (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    out_table = AllocateULL(256);
     printf("Allocated out_table memory location at %p\n", out_table);
-    mod_table =  (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    mod_table = AllocateULL(256);
     printf("Allocated mod_table memory location at %p\n", mod_table);
 
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
+    #ifdef __SDSCC__
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(2, &cpuset);
@@ -341,6 +363,7 @@ int main(int argc, char* argv[]){
     cpu_set_t cpuset2;
     CPU_ZERO(&cpuset2);
     CPU_SET(3, &cpuset2);
+    #endif
 
 #if READING_FROM_SERVER
     uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
@@ -434,8 +457,8 @@ unsigned long long overallStart;
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
-    sds_free(out_table);
-    sds_free(mod_table);
+    FreeULL(out_table);
+    FreeULL(mod_table);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #else
