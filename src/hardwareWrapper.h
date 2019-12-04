@@ -23,12 +23,13 @@
  * @return Number of bytes written by this iteration of processing
  */
 
-#pragma SDS data copy(input[0:INBUFFER_SIZE], output[0:OUTBUFFER_SIZE], out_table[0:256], mod_table[0:256])
+#pragma SDS data copy(input[0:INBUFFER_SIZE], output[0:OUTBUFFER_SIZE], out_table[0:256], mod_table[0:256], outputDictIndex[0:1])
 #pragma SDS data zero_copy(tableLocation[0:SHA256TABLESIZE])
-#pragma SDS data access_pattern(input:SEQUENTIAL, output:SEQUENTIAL, tableLocation:RANDOM, out_table:RANDOM, mod_table:RANDOM)
+#pragma SDS data access_pattern(input:SEQUENTIAL, output:SEQUENTIAL, tableLocation:RANDOM, out_table:RANDOM, mod_table:RANDOM, outputDictIndex:SEQUENTIAL)
 #pragma SDS data mem_attribute(input:PHYSICAL_CONTIGUOUS, output:PHYSICAL_CONTIGUOUS, tableLocation:PHYSICAL_CONTIGUOUS, out_table:PHYSICAL_CONTIGUOUS, mod_table:PHYSICAL_CONTIGUOUS)
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
-                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256]);
+                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256],
+					   uint32_t currentDictIndex, uint32_t outputDictIndex[1]);
 
 
 // INTERFACE FORMATTING

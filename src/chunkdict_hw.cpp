@@ -159,7 +159,9 @@ int shaRecordsEqual(const uint8_t record1[SHA256_SIZE], const uint8_t record2[SH
     return retval;
 }//shaRecordsEqual
 
-int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE]){
+int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE],
+		uint32_t currentDictIndex, uint32_t outputDictIndex[0]){
+	currentIndex = currentDictIndex;
     ap_uint<HASHBITS> key = hashShaKey(input);
     uint8_t candidates[DRAM_PULL_SIZE];
 
@@ -178,15 +180,16 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 
     if (indexVal >= SHANOTFOUND){//should cover weird case where all-ones triggers weird stuff
         storeNewValue(input, tableLocation, key, candidates);
-
+        *outputDictIndex = currentIndex;
         return -1;
     }//if
     else{
+    	*outputDictIndex = currentIndex;
         return indexVal;
     }//else
 
 
-
+    *outputDictIndex = currentIndex;
     return 0;
 }//indexForShaValue_HW
 

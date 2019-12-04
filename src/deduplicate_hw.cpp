@@ -101,7 +101,11 @@ void outputPacket(hls::stream< ap_uint<9> > &deduplicateToOutput,
 void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
                     hls::stream< ap_uint<9> > &lzwToDeduplicate,
                     hls::stream< ap_uint<9> > &deduplicateToOutput,
-                    uint8_t tableLocation[SHA256TABLESIZE]){
+                    uint8_t tableLocation[SHA256TABLESIZE],
+					uint32_t currentDictIndex,
+					uint32_t outputDictIndex[1]){
+	uint32_t currentIndex = currentDictIndex;
+	uint32_t outputIndex;
 
     chunknumDedup = 0;
     uint8_t shaBuffer[SHA256_SIZE];
@@ -120,7 +124,8 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         //read in our SHA value
         readFromSha(shaToDeduplicate, shaBuffer);
 
-        int shaIndex = indexForShaVal_HW(shaBuffer, tableLocation);
+        int shaIndex = indexForShaVal_HW(shaBuffer, tableLocation, currentIndex, &outputIndex);
+        currentIndex = outputIndex;
         uint8_t foundSha;//stand-in for a boolean
         if (shaIndex < 0) foundSha = 0;
         else foundSha = 1;
@@ -137,6 +142,7 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
 
         if (wasEndOfFile[0]){
             HLS_PRINTF("DEDUP\t%d\tW TOTAL %d\n", chunknumDedup, counter_Dtot);
+            *outputDictIndex = outputIndex;
             return;
         }//if the last run was our final one
 

@@ -64,7 +64,8 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 }//finalOutput
 
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
-                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256]){
+                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256],
+					   uint32_t currentDictIndex, uint32_t outputDictIndex[1]){
     #pragma HLS STREAM variable=input depth=2048//not sure if good number
     #pragma HLS STREAM variable=output depth=2048//not sure if good number
 
@@ -88,12 +89,11 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, numElements);
     sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);
     lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
-    deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
+    deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation, currentDictIndex, outputDictIndex);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 
     return numOutput;
 }//processBuffer
-
 
 
 

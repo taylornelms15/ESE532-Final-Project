@@ -413,6 +413,10 @@ unsigned long long overallStart;
 	#endif
 #endif
 
+    uint32_t currentDictIndex = 0;
+    uint32_t outputDictIndex = 0;
+
+    //MAIN LOOP
     while(true) {
 #if READING_FROM_SERVER
     	if(go == 0)
@@ -438,7 +442,13 @@ unsigned long long overallStart;
         	break;
         }
         printf("Starting processing on buffer of size %d\n", nextBufferSize);
-        uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize, out_table, mod_table);
+        //#########################
+        // ACTUAL HARDWARE CALL
+        //#########################
+        uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize,
+                                              out_table, mod_table,
+                                              currentDictIndex, &outputDictIndex);
+        currentDictIndex = outputDictIndex;//update between runs
 #if READING_FROM_SERVER
         memcpy(writeFileBuf, output, hwOutputSize);
         dataSize = hwOutputSize;
@@ -471,13 +481,7 @@ unsigned long long overallStart;
     pthread_join(nwId, NULL);
     pthread_join(writeFileId, NULL);
 #endif
-  /*
-    char diff_str[250];
-    sprintf(diff_str, "diff -w %s %s", hostOutfileName, gold_hostOutfileName);
-    int ret = system(diff_str);
-    printf("diff_str : %s\n", diff_str);
-    printf("ret: %d\n", ret);
-*/
+
 #if MEASURING_LATENCY
     printf("recvBytes : %d Bytes\n", recvBytes);
     double timeTaken = (overallEnd - overallStart) / (1.2 * 1000000000);//in seconds
