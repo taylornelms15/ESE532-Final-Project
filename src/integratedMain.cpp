@@ -17,7 +17,7 @@
 #include "hardwareWrapper.h"
 #include "rabin.h"
 
-#define READING_FROM_SERVER 1
+//#define READING_FROM_SERVER 1
 //#define __linux__
 
 #if READING_FROM_SERVER
@@ -40,8 +40,8 @@
 #endif
 
 
-static const char hostInfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.txt";
-static const char hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince.compress";
+static const char hostInfileName[] = "C:/Users/rgjus/Desktop/franklin.txt";
+static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/franklin.dat";
 static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
@@ -326,21 +326,21 @@ int main(int argc, char* argv[]){
     output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
-    out_table = (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    out_table = (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
     printf("Allocated out_table memory location at %p\n", out_table);
-    mod_table =  (unsigned long long *)sds_alloc(sizeof(uint64_t) * 256);
+    mod_table =  (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
     printf("Allocated mod_table memory location at %p\n", mod_table);
 
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(2, &cpuset);
-
-    cpu_set_t cpuset2;
-    CPU_ZERO(&cpuset2);
-    CPU_SET(3, &cpuset2);
+    //cpu_set_t cpuset;
+    //CPU_ZERO(&cpuset);
+    //CPU_SET(2, &cpuset);
+    //
+    //cpu_set_t cpuset2;
+    //CPU_ZERO(&cpuset2);
+    //CPU_SET(3, &cpuset2);
 
 #if READING_FROM_SERVER
     uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
@@ -428,14 +428,14 @@ unsigned long long overallStart;
     printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
 
- //   Store_Data(output, outputOffset + 1);
-//    printf("Stored data successfully\n");
+    Store_Data(output, outputOffset + 1);
+    printf("Stored data successfully\n");
 
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
-    sds_free(out_table);
-    sds_free(mod_table);
+    Free((uint8_t*)out_table);
+    Free((uint8_t*)mod_table);
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #else

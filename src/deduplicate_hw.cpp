@@ -6,6 +6,13 @@
 #include "chunkdict_hw.h"
 #include "deduplicate_hw.h"
 
+//#define SHA_CACHE
+
+#ifdef SHA_CACHE
+#define SHA_CACHE_SIZE	10
+uint8_t sha_cache_itr = 0;
+#endif
+
 static ap_uint<9> lzwOutputBuffer[LZWMAXSIZE + 4 + 1];//4 extra for the header, 1 extra for an ending ENDOFCHUNK or ENDOFFILE
 
 /**
@@ -97,8 +104,19 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
     uint8_t shaBuffer[SHA256_SIZE];
     uint8_t wasEndOfFile[1] = {0};//keeps track of if the previous chunk ended with ENDOFFILE, and can be used as an inout variable
 
+#ifdef SHA_CACHE
+    /** Small cache for storing SHA values and corresponding chunk index */
+#pragma HLS array_partition variable=sha_val_cache
+#pragma HLS array_partition variable=sha_index_cache dim=0
+
+    static uint8_t sha_val_cache[SHA_CACHE_SIZE][SHA256_SIZE];
+    static int sha_index_cache[SHA_CACHE_SIZE];
+    bool sha_cache_match;
+#endif
+
     for(int j = 0; j < MAX_CHUNKS_IN_HW_BUFFER; j++){
 
+    	printf("chunk no: %d\n", j);
         //read in our LZW chunk (need to do this regardless of SHA found, to clear the stream)
         uint32_t packetSize = readFromLzw(lzwToDeduplicate, wasEndOfFile);//don't bother giving it the first 4 header bytes
         uint32_t lzwChunkSize = packetSize - 5;//write this value (modified) to the header
@@ -106,12 +124,64 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
         //read in our SHA value
         readFromSha(shaToDeduplicate, shaBuffer);
 
-        int shaIndex = indexForShaVal_HW(shaBuffer, tableLocation);
+        int shaIndex;
+#ifdef SHA_CACHE
+        /** Check if this sha val is present in the SHA cache */
+        int  i;
+        for(i = 0; i < SHA_CACHE_SIZE; i++)
+        {
+        	sha_cache_match = 1;
+#pragma HLS unroll
+        	for (int j = 0; j < SHA256_SIZE; j++)
+        	{
+        		if (sha_val_cache[i][j] != shaBuffer[j])
+        		{
+        			sha_cache_match = 0;
+        			//printf("sha value at %d din't match\n", i);
+        			break;
+        		}
+        	}
+
+        	if (sha_cache_match == 1)
+        	{
+        		printf("found sha in cache - sha index : %d\n", sha_index_cache[i]);
+        		break;
+        	}
+        }
+
+        if (sha_cache_match)
+        {
+        	shaIndex = sha_index_cache[i];
+        }
+        else
+        {
+        	shaIndex = indexForShaVal_HW(shaBuffer, tableLocation);
+        	if (shaIndex >= 0)
+        		printf("Chunk found in table - sha index : %d\n", shaIndex);
+        }
+
+        //printf("sha index : %d\n", shaIndex);
+        /** Store the value in sha cache */
+        if (!sha_cache_match && shaIndex >= 0)
+        {
+			sha_cache_itr %= SHA_CACHE_SIZE;
+			//printf("sha cache iter: %u\n", sha_cache_itr);
+			for (int k = 0; k < SHA256_SIZE; k++)
+			{
+#pragma HLS unroll
+				sha_val_cache[sha_cache_itr][k] = shaBuffer[k];
+			}
+			sha_index_cache[sha_cache_itr] = shaIndex;
+			sha_cache_itr++;
+		}
+#else
+        shaIndex = indexForShaVal_HW(shaBuffer, tableLocation);
+#endif
+
         uint8_t foundSha;//stand-in for a boolean
         if (shaIndex < 0) foundSha = 0;
         else foundSha = 1;
         
-
         //fill in the header appropriately
         uint32_t packetSendSize = fillHeaderBuffer(foundSha, shaIndex, lzwChunkSize, wasEndOfFile[0]);
 
