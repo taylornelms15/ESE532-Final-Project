@@ -9,6 +9,7 @@
 #include "sha256_hw.h"
 #include "rabin.h"
 
+int counter_Hout = 0;
 
 void readIntoRabin(uint8_t input[INBUFFER_SIZE], hls::stream< ap_uint<9> > &readerToRabin, uint32_t numElements){
 
@@ -43,6 +44,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
         }
         else{
             ap_uint<9> nextByte = deduplicateToOutput.read();
+            counter_Hout++;
             if (nextByte < 256){
                 valToWrite = (uint8_t) nextByte;
                 numOutput++;
@@ -56,13 +58,14 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 
     }//for
 
-
+    HLS_PRINTF("OUT\t\tR DEDUP %d\n", counter_Hout);
     return numOutput;
 
 }//finalOutput
 
 uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SIZE], 
-                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256]){
+                       uint8_t tableLocation[SHA256TABLESIZE], uint32_t numElements, unsigned long long out_table[256], unsigned long long mod_table[256],
+					   uint32_t currentDictIndex, uint32_t outputDictIndex[1]){
     #pragma HLS STREAM variable=input depth=2048//not sure if good number
     #pragma HLS STREAM variable=output depth=2048//not sure if good number
 
@@ -84,14 +87,13 @@ uint32_t processBuffer(uint8_t input[INBUFFER_SIZE], uint8_t output[OUTBUFFER_SI
     #pragma HLS dataflow
     readIntoRabin(input, readerToRabin, numElements);
     rabin_next_chunk_HW(readerToRabin, rabinToSHA, rabinToLZW, out_table, mod_table, numElements);
-    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);	// TODO: Enable writing to shaToDeduplicate
-    lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);		// TODO: Enable writing to lzwToDeduplicate
-    deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation);
+    sha256_hw_wrapper(rabinToSHA, shaToDeduplicate);
+    lzwCompressAllHW(rabinToLZW, lzwToDeduplicate);
+    deduplicate_hw(shaToDeduplicate, lzwToDeduplicate, deduplicateToOutput, tableLocation, currentDictIndex, outputDictIndex);
     uint32_t numOutput = finalOutput(deduplicateToOutput, output, numElements);
 
     return numOutput;
 }//processBuffer
-
 
 
 

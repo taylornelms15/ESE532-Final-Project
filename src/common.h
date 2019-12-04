@@ -6,12 +6,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 #include <stdint.h>
-//typedef unsigned char uint8_t;
-//typedef unsigned int uint32_t;
-//typedef int int32_t;
-//typedef short int16_t;
-//typedef unsigned short uint16_t;
-//typedef unsigned long uint64_t;
 
 #define HALF_ENABLE_CPP11_CMATH 0
 
@@ -28,7 +22,7 @@
 #define OUTBUFFER_SIZE (INBUFFER_SIZE)
 
 
-#define MAX_CHUNKS_IN_HW_BUFFER ((INBUFFER_SIZE + 1) / MINSIZE)
+#define MAX_CHUNKS_IN_HW_BUFFER (2 + (INBUFFER_SIZE) / MINSIZE)
 
 //Codes for use with 9-bit streams to denote the end of the chunk and/or the end of the file
 #define ENDOFCHUNK  256
@@ -51,5 +45,18 @@
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
+
+//this helps our HLS_PRINTF function work
+#ifdef __linux__
+#define HLS_PRINTF(format, ...) ;
+#else
+#include <stdio.h>
+#define HLS_PRINTF(format, ...) printf(format, __VA_ARGS__)
+#endif
+
+
+
+
+
 
 #endif

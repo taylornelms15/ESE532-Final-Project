@@ -9,9 +9,8 @@
 
 
 
-//#pragma SDS data zero_copy(tableLocation[0:SHA256TABLESIZE])
-//#pragma SDS data mem_attribute(tableLocation:PHYSICAL_CONTIGUOUS)
-int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE]);
+int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE],
+		uint32_t currentDictIndex, uint32_t outputDictIndex[0]);
 
 
 

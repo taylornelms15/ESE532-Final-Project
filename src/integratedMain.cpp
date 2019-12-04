@@ -43,6 +43,7 @@
 static const char hostInfileName[] = "C:/Users/rgjus/Desktop/franklin.txt";
 static const char hostOutfileName[] = "C:/Users/rgjus/Desktop/franklin.dat";
 static const char gold_hostOutfileName[] = "/home/nishanth/University/ESE_532/Final_project/HLS/ESE532-Final-Project/Testfiles/LittlePrince_golden.compress";
+
 //static const char deviceInfileName[] = "LittlePrince.txt";
 char deviceInfileName[50];
 static const char deviceOutfileName[] = "compress.dat";
@@ -88,7 +89,29 @@ uint8_t* Allocate(int Size){
     return Frame;
 }
 
+unsigned long long* AllocateULL(int Size){
+    unsigned long long* Frame = (unsigned long long*)
+#ifdef __SDSCC__
+    sds_alloc(Size * sizeof(unsigned long long));
+#else
+    malloc(Size * sizeof(unsigned long long));
+#endif
+    if (Frame == NULL){
+        printf("ERROR: Could not allocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    return Frame;
+}
+
 void Free(uint8_t* Frame){
+#ifdef __SDSCC__
+    sds_free(Frame);
+#else
+    free(Frame);
+#endif
+}
+
+void FreeULL(unsigned long long* Frame){
 #ifdef __SDSCC__
     sds_free(Frame);
 #else
@@ -326,21 +349,28 @@ int main(int argc, char* argv[]){
     output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
-    out_table = (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
+
+    out_table = AllocateULL(256);
     printf("Allocated out_table memory location at %p\n", out_table);
-    mod_table =  (unsigned long long *)Allocate(sizeof(uint64_t) * 256);
+    mod_table = AllocateULL(256);
+
     printf("Allocated mod_table memory location at %p\n", mod_table);
+
 
     struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
-    //cpu_set_t cpuset;
-    //CPU_ZERO(&cpuset);
-    //CPU_SET(2, &cpuset);
-    //
-    //cpu_set_t cpuset2;
-    //CPU_ZERO(&cpuset2);
-    //CPU_SET(3, &cpuset2);
+
+    #ifdef __SDSCC__
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(2, &cpuset);
+
+    cpu_set_t cpuset2;
+    CPU_ZERO(&cpuset2);
+    CPU_SET(3, &cpuset2);
+    #endif
+
 
 #if READING_FROM_SERVER
     uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
@@ -389,6 +419,10 @@ unsigned long long overallStart;
 	#endif
 #endif
 
+    uint32_t currentDictIndex = 0;
+    uint32_t outputDictIndex = 0;
+
+    //MAIN LOOP
     while(true) {
 #if READING_FROM_SERVER
     	if(go == 0)
@@ -414,11 +448,21 @@ unsigned long long overallStart;
         	break;
         }
         printf("Starting processing on buffer of size %d\n", nextBufferSize);
-        uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize, out_table, mod_table);
+        //#########################
+        // ACTUAL HARDWARE CALL
+        //#########################
+        uint32_t hwOutputSize = processBuffer(hwBuffer, output, chunkTable, nextBufferSize,
+                                              out_table, mod_table,
+                                              currentDictIndex, &outputDictIndex);
+        currentDictIndex = outputDictIndex;//update between runs
+#if READING_FROM_SERVER
         memcpy(writeFileBuf, output, hwOutputSize);
         dataSize = hwOutputSize;
         while(go_write == 1);
         	go_write = 1;
+#else
+
+#endif
         outputOffset += hwOutputSize;
         printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
@@ -434,8 +478,10 @@ unsigned long long overallStart;
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
-    Free((uint8_t*)out_table);
-    Free((uint8_t*)mod_table);
+
+    FreeULL(out_table);
+    FreeULL(mod_table);
+
 #if !READING_FROM_SERVER
     Free(fileBuffer);
 #else
@@ -443,13 +489,7 @@ unsigned long long overallStart;
     pthread_join(nwId, NULL);
     pthread_join(writeFileId, NULL);
 #endif
-  /*
-    char diff_str[250];
-    sprintf(diff_str, "diff -w %s %s", hostOutfileName, gold_hostOutfileName);
-    int ret = system(diff_str);
-    printf("diff_str : %s\n", diff_str);
-    printf("ret: %d\n", ret);
-*/
+
 #if MEASURING_LATENCY
     printf("recvBytes : %d Bytes\n", recvBytes);
     double timeTaken = (overallEnd - overallStart) / (1.2 * 1000000000);//in seconds

@@ -28,6 +28,7 @@
 /*********************** FUNCTION DEFINITIONS *********************** */
 
 static int counter_hw = 0;
+static int chunknumSHA = 0;
 
 void sha256_hw_transform(hls::stream<ap_uint<9> > &data, unsigned int state[8])
 {
@@ -131,7 +132,6 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 #pragma HLS STREAM variable=subchunk depth=2048
 	for(uint16_t i = 0; i < MAXCHUNKLENGTH + 5; i++)
 	{
-//#pragma HLS dataflow
 #pragma HLS loop_tripcount min=0 avg=4000 max=8000
 
 		byte = data.read();
@@ -192,7 +192,6 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 				//#pragma HLS RESOURCE variable=hash core=AddSub_DSP
 				// Since this implementation uses little endian byte ordering and SHA uses big endian,
 				// reverse all the bytes when copying the final state to the output hash.
-#if 1
 
 				//printf("hash values: \n");
 				for(int j = 0; j < 8; j++)
@@ -205,14 +204,16 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 
 						hash.write((state[j] >> (24 - 3 * 8)) & 0x000000ff);
 				}
-#endif
+
 
 #endif
 			ending_byte = byte;
 
 			//printf("read %d bytes from input \n", counter);
 			//printf("written %d bytes to subchunk\n", subchunk_counter);
-			//printf("read %d bytes from subchunk \n", counter_hw);
+			chunknumSHA++;
+			HLS_PRINTF("SHA\t%d\tR RABIN %d\n", chunknumSHA, counter);
+			//HLS_PRINTF("SHA\t%d\tW DEDUP %d\n", chunknumSHA, 32);
 			counter_hw = 0;
 			return ending_byte;
 		}
@@ -239,12 +240,13 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 		printf("%u ", state[i]);
 	printf("\n");
 */
-
+	return ENDOFFILE;//Shouldn't get here; will make the compiler happier in HLS though
 }
 
 void sha256_hw_wrapper(hls::stream<ap_uint<9> > &rabinToSHA, hls::stream< uint8_t > &shaToDeduplicate)
 //void sha256_hw_wrapper(hls::stream<ap_uint<9>>& rabinToSHA, hls::stream< uint8_t >& shaToDeduplicate)
 {
+    chunknumSHA = 0;
 	/** Collect chunk and send it to SHA_HW unit to  process it */
 	/** If MSB = 1, it indicates end of chunk */
 	for (int i = 0; i < MAX_CHUNKS_IN_HW_BUFFER; i++){

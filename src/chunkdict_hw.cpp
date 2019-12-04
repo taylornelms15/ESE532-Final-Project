@@ -110,18 +110,21 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
     uint32_t offset = getDramOffset(key);
 
     int rowOffset = -1;
-    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i ++){
         #pragma HLS unroll
         uint32_t candIndex;
-        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
         memcpy4B(&candIndex, indexPortion);
         if (candIndex >= SHANOTFOUND){
-            rowOffset = i;
+            rowOffset = i * BYTES_PER_ROW;
             break;
         }//found a free part of the table
     }//for each candidate
     if (rowOffset < 0){
         //TODO: handle a hash overflow here!!!!!
+        HLS_PRINTF("ERROR\tHash collision on CHUNKDICT!%d\n", 0);
+        currentIndex++;
+        return;//don't store, just eat the badness of messing it all up
     }//if hash overflow
 
     uint32_t storageOffset = offset + rowOffset;
@@ -156,7 +159,9 @@ int shaRecordsEqual(const uint8_t record1[SHA256_SIZE], const uint8_t record2[SH
     return retval;
 }//shaRecordsEqual
 
-int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE]){
+int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SHA256TABLESIZE],
+		uint32_t currentDictIndex, uint32_t outputDictIndex[0]){
+	currentIndex = currentDictIndex;
     ap_uint<HASHBITS> key = hashShaKey(input);
     uint8_t candidates[DRAM_PULL_SIZE];
 
@@ -175,15 +180,16 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 
     if (indexVal >= SHANOTFOUND){//should cover weird case where all-ones triggers weird stuff
         storeNewValue(input, tableLocation, key, candidates);
-
+        *outputDictIndex = currentIndex;
         return -1;
     }//if
     else{
+    	*outputDictIndex = currentIndex;
         return indexVal;
     }//else
 
 
-
+    *outputDictIndex = currentIndex;
     return 0;
 }//indexForShaValue_HW
 
