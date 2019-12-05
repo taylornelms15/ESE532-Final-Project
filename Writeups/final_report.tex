@@ -20,6 +20,20 @@
 
 
 \section{Ultra 96 design}
+– Performance achieved and energy required
+– Compression achieved
+– Key design aspects: task decomposition, parallelism, mapping to Zynq resources, include diagrams to support
+– Be clear where each component of the final design is performed (e.g., ARM, NEON vector, FPGA logic).
+– Model to explain performance, area, and energy of design
+– Current bottleneck preventing higher performance
+
+All the components CDC, SHA, LZW and deduplication operate in hardware. 
+Input data is read from network and it is processed in 2MB parts. 
+// TODO: Detailed description about network reads
+
+CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
+3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
+
 
 \section{10 Gbps design}
 
