@@ -28,7 +28,6 @@ As such, you must excuse us if we are light on some empiric details, as we, even
 
 
 
-
 \section{Ultra 96 design}
 – Performance achieved and energy required
 – Compression achieved
@@ -38,32 +37,8 @@ As such, you must excuse us if we are light on some empiric details, as we, even
 – Current bottleneck preventing higher performance
 
 All the components CDC, SHA, LZW and deduplication operate in hardware. 
-\newline\newline
-
-Processor components:
-\newline
 Input data is read from network and it is processed in 2MB parts. 
-\newline
-The input read over the network is handled using a pthread that is executing on its own core. 
-\newline
-The primary processor core(core 0) is running the PS section that interfaces with the PL logic. 
-\newline
-The network thread is bound to run only on core 2. 
-\newline
-
-Network thread functionality: 
-\newline
-The thread uses a 200MB input buffer that is shared between the cores 2 and 0.
-\newline
-The NW thread then reads packets, calculates the length of each packet and then copies over the bytes to the buffer.
-\newline
-In our implementation, we use 2MB buffers to feed the dataflow model implemented on the FPGA.
-\newline
-So the NW thread has the additional responsibility to increment a counter everytime it crosses the 2MB boundary. 
-This variable is checked against in the main processor to make certain that it does not try to process any data before the buffer data fills up. The variable is used as a synchronization mechanism.
-\newline
-Finally upon exit, the NW thread indicates that it has completed its purpose and marks a variable that is used by core 0 to figure out that no more packets are to be expected.
-
+// TODO: Detailed description about network reads
 
 CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
 3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
@@ -79,15 +54,23 @@ Looking at our current design, we can approach designing a \texttt{10Gbps} desig
 \newline\newline
 One of the first things we can see from our current resource usage is that we have a good number of BRAM's still available, as well as a large proportion of our FF/LUT resources.
 This opens us up to putting more SHA units (for the computational resources) and LZW units (for the memory resources) onto the PL, with the idea that one of the two (likely the former) is the bottleneck culprit.
-With the idea that a singular \tecttt{deduplicate} unit would still need to control output, we could link the \texttt{rabin} unit to the \texttt{deduplicate} unit by way of multiple parallel \texttt{SHA} units; for this example, we will imagine $2$ such units. This would allow us to alternate which unit hashed which series of chunks, allowing for an idealized $2x$ speedup on that axis.
+\newline
+With the idea that a singular \texttt{deduplicate} unit would still need to control output, we could link the \texttt{rabin} unit to the \texttt{deduplicate} unit by way of multiple parallel \texttt{SHA} units; for this example, we will imagine $2$ such units. This would allow us to alternate which unit hashed which series of chunks, allowing for an idealized $2x$ speedup on that axis.
+\newline
 As for the \texttt{LZW} unit, we could easily fit another onto the PL in the same fashion.
 \newline\newline
-If the resources are not the bottle
+If the resources are not the bottleneck, then we would need to look into the process by which we are transferring data. the use of \texttt{hls::stream} FIFO units has been handy for automatically handling a lot of timing requirements, but they carry the disadvantage of limiting the rate by which we are (conceptually) pipelining data through our application.
+\newline\newline
+One way we could improve upon this would be to use multiple streams in parallel for our application; conceptually, this would be similar to, instead of sending water through a single garden hose, sending water through two parallel garden hoses.
+\newline\newline
+If our bottleneck in the PL is access to the shared memory inside which our SHA dictionary resides, we could mitigate that problem by decreasing the amount of memory we need to read. We could do this by expanding our shared memory hash table region; if we're expecting something along the lines of $2^{16}$ unique chunks in a file, we could allocate $2^{19}$, or more, total hash lines such that we would probabilistically only need to pull one hash line for any given SHA digest.
+\newline
+In this way, our total memory access would be in the range of $36$ bytes per chunk, rather than our current $144$. The disadvantage would be, we may need a particularly significant field of hash values to near-guarantee that we would not encounter any hash collisions that may break our design.
+\newline\newline
+
+
 
 \section{Validation techniques}
-As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
-
-We also use prints on the main arm core, that prints the bytes read by the network thread, to provide real time testing validation that all bytes are being read and no packets are being dropped. 
 
 \section{Key lessons learned}
 
