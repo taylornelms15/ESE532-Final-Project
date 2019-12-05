@@ -212,7 +212,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 			//printf("read %d bytes from input \n", counter);
 			//printf("written %d bytes to subchunk\n", subchunk_counter);
 			chunknumSHA++;
-			HLS_PRINTF("SHA\t%d\tR RABIN %d\n", chunknumSHA, counter);
+			//HLS_PRINTF("SHA\t%d\tR RABIN %d\n", chunknumSHA, counter);
 			//HLS_PRINTF("SHA\t%d\tW DEDUP %d\n", chunknumSHA, 32);
 			counter_hw = 0;
 			return ending_byte;

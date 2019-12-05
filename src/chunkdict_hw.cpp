@@ -5,7 +5,6 @@
 
 #include "chunkdict_hw.h"
 #include "ap_int.h"
-#include "stdint.h"
 
 static uint32_t currentIndex = 0;
 
@@ -28,6 +27,17 @@ ap_uint<HASHBITS> hashShaKey(const uint8_t input[SHA256_SIZE]){
     #pragma HLS inline
 
     ap_uint<HASHBITS> retval = 0;
+
+#if 0
+    hashkeyloop:for(uint8_t i = 0; i < SHA256_SIZE / 2; i++){
+        #pragma HLS unroll
+    	uint8_t evenByte = input[2 * i];
+    	uint8_t oddByte = input[2 * i + 1];
+    	ap_uint<HASHBITS> temp = (((ap_uint<HASHBITS>) evenByte) << 0) | (((ap_uint<HASHBITS>) oddByte) << 8);
+    	retval ^= temp;
+    }
+
+#else//was for a more arbitrary number of hash bits
     uint8_t currentHashBit  = 0;
 
     hashkeyloop:for(uint8_t i = 0; i < SHA256_SIZE; i++){
@@ -46,6 +56,7 @@ ap_uint<HASHBITS> hashShaKey(const uint8_t input[SHA256_SIZE]){
             currentHashBit = (currentHashBit + 1) % HASHBITS;
         }//for j (per sha byte's bit)
     }//for i (per sha byte)
+#endif
 
     return retval;
     
@@ -87,17 +98,17 @@ void memcpyRow(uint8_t dst[BYTES_PER_ROW], const uint8_t src[BYTES_PER_ROW]){
 }
 void memcpy4F(uint8_t* dst, const uint32_t src){
 	#pragma HLS inline
-	dst[0] = (uint8_t) src >> 24;
-	dst[1] = (uint8_t) src >> 16;
-	dst[2] = (uint8_t) src >> 8;
-	dst[3] = (uint8_t) src >> 0;
+	dst[0] = (uint8_t) (src >> 0);
+	dst[1] = (uint8_t) (src >> 8);
+	dst[2] = (uint8_t) (src >> 16);
+	dst[3] = (uint8_t) (src >> 24);
 }
 void memcpy4B(uint32_t* dst, const uint8_t* src){
 	#pragma HLS inline
-	*dst = (((uint32_t) src[0]) << 24) |
-           (((uint32_t) src[1]) << 16) |
-           (((uint32_t) src[2]) << 8) |
-           (((uint32_t) src[3]) << 0);
+	*dst = (((uint32_t) src[0]) << 0) |
+           (((uint32_t) src[1]) << 8) |
+           (((uint32_t) src[2]) << 16) |
+           (((uint32_t) src[3]) << 24);
 }
 
 
@@ -111,7 +122,7 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
     uint32_t offset = getDramOffset(key);
 
     int rowOffset = -1;
-    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i ++){
+    findfreeindexloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i++){
         #pragma HLS unroll
         uint32_t candIndex;
         uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
@@ -123,7 +134,7 @@ void storeNewValue(const uint8_t newVal[SHA256_SIZE], uint8_t tableLocation[SHA2
     }//for each candidate
     if (rowOffset < 0){
         //TODO: handle a hash overflow here!!!!!
- //       HLS_PRINTF("ERROR\tHash collision on CHUNKDICT!%d\n", 0);
+        //HLS_PRINTF("ERROR\tHash collision on CHUNKDICT!%d\n", 0);
         currentIndex++;
         return;//don't store, just eat the badness of messing it all up
     }//if hash overflow
@@ -170,10 +181,10 @@ int indexForShaVal_HW(const uint8_t input[SHA256_SIZE], uint8_t tableLocation[SH
 
 
     uint32_t indexVal = SHANOTFOUND;
-    findequalrecordloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i += BYTES_PER_ROW){
+    findequalrecordloop:for (int i = 0; i < NUM_ENTRIES_PER_HASH_VALUE; i++){
         #pragma HLS unroll
-        uint8_t* shaPortion = &candidates[i];
-        uint8_t* indexPortion = &candidates[i + SHA256_SIZE];
+        uint8_t* shaPortion = &candidates[i * BYTES_PER_ROW];
+        uint8_t* indexPortion = &candidates[i * BYTES_PER_ROW + SHA256_SIZE];
         if (shaRecordsEqual(input, shaPortion)){
             memcpy4B(&indexVal, indexPortion);
         }//if

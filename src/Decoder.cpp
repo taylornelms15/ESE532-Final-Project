@@ -83,6 +83,7 @@ int main(int Parameter_count, char * Parameters[])
   }
 
   std::ofstream Output(Parameters[2], std::ios::binary);
+  int numOutput = 0;
   //std::ofstream Output("InputDecode.bin", std::ios::binary);
   if (!Output.good())
   {
@@ -104,16 +105,18 @@ int main(int Parameter_count, char * Parameters[])
       int Chunk_size = Header >> 1;
       const std::string & Chunk = Decompress(Chunk_size);
       Chunks.push_back(Chunk);
-      std::cout << "Decompressed chunk of size " << Chunk.length() << ".\n";
+	  std::cout << "Decompressed chunk of size " << Chunk.length() << ",\twriting at " << numOutput << ".\n";
       Output.write(&Chunk[0], Chunk.length());
+	  numOutput += Chunk.length();
     }
     else
     {
      int Location = Header >> 1;
       if (Location<Chunks.size()) {  // defensive programming to avoid out-of-bounds reference
           const std::string & Chunk = Chunks[Location];
-          std::cout << "Found chunk of size " << Chunk.length() << " in database.\n";
+          std::cout << "Found chunk of size " << Chunk.length() << " in database,\twriting at "<< numOutput << " \n";
           Output.write(&Chunk[0], Chunk.length());
+		  numOutput += Chunk.length();
 	  }
       else
       {

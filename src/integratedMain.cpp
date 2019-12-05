@@ -18,7 +18,10 @@
 #include "rabin.h"
 
 #define READING_FROM_SERVER 1
-#define __linux__
+
+#define SEPARATE_OUTPUT_THREAD 0
+
+#define __linux__ 1
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -48,14 +51,25 @@ static const char deviceOutfileName[] = "compress.dat";
 unsigned long long *out_table;
 unsigned long long *mod_table;
 uint32_t recvBytes = 0;
+
+//Interthread variables
 int8_t go_nw = 0;
 int8_t go_core = 0;
 int8_t go_nw_exit = 0;
 uint8_t go_write = 0;
 uint8_t end_write = 0;
+
+//Mutexes for interthread variables
+pthread_mutex_t m_go_nw;
+pthread_mutex_t m_go_nw_exit;
+pthread_mutex_t m_go_write;
+pthread_mutex_t m_end_write;
+pthread_mutex_t m_recvbytes;
+
+
 uint32_t dataSize = 0;
 uint8_t writeFileBuf[OUTBUFFER_SIZE];
-uint8_t* output;
+
 
 
 void resetTable(uint8_t tableLocation[SHA256TABLESIZE]);
@@ -127,37 +141,52 @@ void *read_NW(void *arg) {
 	ESE532_Server Server = ESE532_Server();
 	Server.setup_server();
 
-	unsigned char *Data = (unsigned char *)arg;
+    //the arg is a pointer to our data buffer
+    unsigned char *Data = (unsigned char *)arg;
+    //starting to read into it at the first byte
 	unsigned int currentIndex = 0;
 	uint8_t server_rd_stp = 0;
 	printf("read_NW thread\n");
-	while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
+    while(!server_rd_stp && (currentIndex < MAXINPUTFILESIZE)) {
+            //make a little packet buffer, put data into it from server
 	      	uint8_t pkt[MAXPKTSIZE+HEADER];
 	        uint16_t thisPacketBytes = Server.get_packet(pkt);
+            //if we got no more data, we're done, stop reading from server
 	        if (thisPacketBytes < 0){
 	            printf("Read %d total bytes from network\n", currentIndex + 1);
 	            break;
 	        }//end of transmission
 
+            //if this packet contains the "stop" bit, mark that we'll stop reading
+            //otherwise, use its header to note the total size of the packet
 	        if((pkt[1] & 0x80) == 128)
 	          server_rd_stp = 1;
 	        thisPacketBytes = (((uint16_t)(pkt[1] << 8 | pkt[0])) & 0x7fff) ;
-	     /*   printf("pkt[0] : %x\n", pkt[0]);
-			printf("pkt[1] : %x\n", pkt[1]);
-	        printf("pkt len: %d\n", thisPacketBytes);*/
+            //copy as many bytes as we need into our data read buffer
 	        memcpy(Data + currentIndex, &pkt[HEADER], thisPacketBytes);
 
+            //our read-into-location changes
 	        currentIndex += thisPacketBytes;
+            //total received bytes increases by the same amount
+	        pthread_mutex_lock(&m_recvbytes);
 	        recvBytes += thisPacketBytes;
+	        pthread_mutex_unlock(&m_recvbytes);
+            //if we've received enough bytes to tell the hardware to go again, increase the "number of times to go" counter
+	        pthread_mutex_lock(&m_go_nw);
 	        if(recvBytes >= (go_nw + 1) * INBUFFER_SIZE) {
 	        	go_nw++;
-
 	        }
+	        pthread_mutex_unlock(&m_go_nw);
 
 
 	    }//while
-	go_nw++;
+    pthread_mutex_lock(&m_go_nw);
+    pthread_mutex_lock(&m_go_nw_exit);
+    go_nw++;
 	go_nw_exit = 1;
+	pthread_mutex_unlock(&m_go_nw_exit);
+    pthread_mutex_unlock(&m_go_nw);
+
 
 	printf("Exiting NW thread\n");
 	pthread_exit(NULL);
@@ -233,6 +262,7 @@ unsigned int Store_Data_linux(uint8_t* Data, uint32_t dataSize, const char* file
   return Bytes_written;
 }
 
+#if SEPARATE_OUTPUT_THREAD
 //##################
 //STORE THREAD
 //##################
@@ -246,16 +276,33 @@ void *Store_Data_linux_thread(void *arg){
       Exit_with_error();
   }
 
-  while(end_write != 2) {
+  //while(end_write != 2) {
+  while(1){
+	  //if end_write is 2, break
+	  pthread_mutex_lock(&m_end_write);
+	  if (end_write == 2){
+		  pthread_mutex_unlock(&m_end_write);
+		  break;
+	  }
+	  pthread_mutex_unlock(&m_end_write);
+
+	  //if go_write is 0, continue
+	  pthread_mutex_lock(&m_go_write);
 	  if(go_write == 0)
+		  pthread_mutex_unlock(&m_go_write);
 		  continue;
+      pthread_mutex_unlock(&m_go_write);
+
+      //else, if go_write is not 0:
 	  printf("dataSize is %d\n", dataSize);
 	  Bytes_written = fwrite(writeFileBuf, 1, dataSize, File);
 	  if (Bytes_written < 1){
 		  printf("None written, result %d\n", Bytes_written);
 		  Exit_with_error();
 	  }
+	  pthread_mutex_lock(&m_go_write);
 	  go_write = 0;
+	  pthread_mutex_unlock(&m_go_write);
   }
 
   if (fclose(File) != 0)
@@ -268,6 +315,7 @@ void *Store_Data_linux_thread(void *arg){
 //##################
 // END THREAD
 //##################
+#endif
 
 unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
   unsigned int Bytes_written;
@@ -299,8 +347,8 @@ unsigned int Store_Data(uint8_t* Data, uint32_t dataSize){
  * @return Number of elements read into our hardware buffer, or 0 if we've hit the end.
  */
 #if READING_FROM_SERVER
-uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t *packetBuffer, uint32_t packetOffset, uint32_t recvBytes){
-	 uint32_t remainingSize = recvBytes - (packetOffset);
+uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t *packetBuffer, uint32_t packetOffset, uint32_t recvBytesCur){
+	 uint32_t remainingSize = recvBytesCur - (packetOffset);
 	    if (remainingSize == 0) return 0;
 	    else if (remainingSize > INBUFFER_SIZE && (remainingSize % INBUFFER_SIZE < MINSIZE)){
 	        memcpy(hwBuffer, packetBuffer + packetOffset, remainingSize / 2);
@@ -336,6 +384,8 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fil
 
 int main(int argc, char* argv[]){
 
+	printf("VERSION NUMBER 0.0.3\n");
+
     #ifdef __SDSCC__//mount SD card
     #ifndef __linux__
     FATFS FS;
@@ -348,20 +398,28 @@ int main(int argc, char* argv[]){
     else
     	strcpy(deviceInfileName, "LittlePrince.txt");
 
+    //#############################
+    // MEMORY ALLOCATIONS
+    //#############################
     uint8_t* chunkTable = Allocate(SHA256TABLESIZE);
     printf("Allocated chunkTable at %p\n", chunkTable);
     uint8_t* hwBuffer = Allocate(INBUFFER_SIZE);
     printf("Allocated hardware processing buffer at %p\n", hwBuffer);
-    output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
+    uint8_t* output = Allocate(OUTBUFFER_SIZE);//will eventually write this to a file
     uint32_t outputOffset = 0;
     printf("Allocated output memory location at %p\n", output);
     out_table = AllocateULL(256);
     printf("Allocated out_table memory location at %p\n", out_table);
     mod_table = AllocateULL(256);
     printf("Allocated mod_table memory location at %p\n", mod_table);
+    #if READING_FROM_SERVER
+    uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
+    #endif
+    #if !SEPARATE_OUTPUT_THREAD
+    uint8_t* writeout_buffer = (uint8_t*)malloc(MAXINPUTFILESIZE);
+    #endif
 
 
-    struct rabin_t *hash = rabin_init();
     resetTable(chunkTable);
 
     #ifdef __SDSCC__
@@ -369,15 +427,16 @@ int main(int argc, char* argv[]){
     CPU_ZERO(&cpuset);
     CPU_SET(2, &cpuset);
 
+    #if SEPARATE_OUTPUT_THREAD
     cpu_set_t cpuset2;
     CPU_ZERO(&cpuset2);
     CPU_SET(3, &cpuset2);
     #endif
+    #endif
+
 
 #if READING_FROM_SERVER
-    uint8_t* packetBuffer 	= Allocate(MAXINPUTFILESIZE);
     pthread_t nwId;
-    pthread_t writeFileId;
 
     //calls read_NW in separate thread
     int thread_ret = pthread_create(&nwId, NULL, &read_NW, packetBuffer);
@@ -389,19 +448,23 @@ int main(int argc, char* argv[]){
         if(thread_ret < 0) {
         	printf("pthread set affinity error\n");
         	exit(0);
-        }
+    }
 
-     //calls Store_Data_linux_thread in a separate thread
-     thread_ret = pthread_create(&writeFileId, NULL, &Store_Data_linux_thread, packetBuffer);
-       if(thread_ret < 0) {
+
+    #if SEPARATE_OUTPUT_THREAD
+    pthread_t writeFileId;
+    //calls Store_Data_linux_thread in a separate thread
+    thread_ret = pthread_create(&writeFileId, NULL, &Store_Data_linux_thread, packetBuffer);
+        if(thread_ret < 0) {
           printf("pthread create error\n");
           exit(0);
         }
-     thread_ret = pthread_setaffinity_np(writeFileId, sizeof(cpu_set_t), &cpuset2);
+    thread_ret = pthread_setaffinity_np(writeFileId, sizeof(cpu_set_t), &cpuset2);
         if(thread_ret < 0) {
             printf("pthread set affinity error\n");
             exit(0);
         }
+    #endif
 
 
    //   	read_NW(packetBuffer);
@@ -426,20 +489,33 @@ unsigned long long overallStart;
 
     //MAIN LOOP
     while(true) {
-#if READING_FROM_SERVER
-    	if(go_core >= go_nw && go_nw_exit != 1)
-        	continue;
+    #if READING_FROM_SERVER
 
-	#if MEASURING_LATENCY
+    	pthread_mutex_lock(&m_go_nw);
+    	pthread_mutex_lock(&m_go_nw_exit);
+        if(go_core >= go_nw && go_nw_exit != 1){
+            pthread_mutex_unlock(&m_go_nw_exit);
+            pthread_mutex_unlock(&m_go_nw);
+            continue;
+        }
+        pthread_mutex_unlock(&m_go_nw_exit);
+        pthread_mutex_unlock(&m_go_nw);
+
+        pthread_mutex_lock(&m_recvbytes);
+        uint32_t recvBytesCur = recvBytes;
+        pthread_mutex_unlock(&m_recvbytes);
+
+	    #if MEASURING_LATENCY
         	if(measure_flag == 0) {
         		overallStart = sds_clock_counter();
         		measure_flag = 1;
         	}
-	#endif
-#endif
+	    #endif
+    #endif
+
     	uint32_t nextBufferSize =
         #if READING_FROM_SERVER
-            readDataIntoBuffer(hwBuffer, packetBuffer, packetOffset, recvBytes);
+            readDataIntoBuffer(hwBuffer, packetBuffer, packetOffset, recvBytesCur);
         	packetOffset += nextBufferSize;
         	go_core++;
 
@@ -448,7 +524,9 @@ unsigned long long overallStart;
             fileOffset += nextBufferSize;
         #endif
         if (nextBufferSize == 0){
+            pthread_mutex_lock(&m_end_write);
             end_write = 2;
+            pthread_mutex_unlock(&m_end_write);
         	break;
         }
         printf("Starting processing on buffer of size %d\n", nextBufferSize);
@@ -459,14 +537,19 @@ unsigned long long overallStart;
                                               out_table, mod_table,
                                               currentDictIndex, &outputDictIndex);
         currentDictIndex = outputDictIndex;//update between runs
-#if READING_FROM_SERVER
+
+    #if SEPARATE_OUTPUT_THREAD
         memcpy(writeFileBuf, output, hwOutputSize);
         dataSize = hwOutputSize;
+
+        //stall while go_write is 1 (???????)
+
         while(go_write == 1);
         	go_write = 1;
-#else
+    #else
+        memcpy(writeout_buffer + outputOffset, output, hwOutputSize);
+    #endif
 
-#endif
         outputOffset += hwOutputSize;
         printf("Processed buffer, ending size %d\n", hwOutputSize);
     }
@@ -476,20 +559,25 @@ unsigned long long overallStart;
     printf("Overall latency %lld\n", overallEnd - overallStart);
     #endif
 
- //   Store_Data(output, outputOffset + 1);
-//    printf("Stored data successfully\n");
+#if !SEPARATE_OUTPUT_THREAD
+    Store_Data(writeout_buffer, outputOffset);//TODO: maybe add +1?
+    printf("Stored data successfully\n");
+    free(writeout_buffer);
+#endif
 
     Free(chunkTable);
     Free(hwBuffer);
     Free(output);
     FreeULL(out_table);
     FreeULL(mod_table);
-#if !READING_FROM_SERVER
-    Free(fileBuffer);
-#else
+#if READING_FROM_SERVER
     Free(packetBuffer);
     pthread_join(nwId, NULL);
+    #if SEPARATE_OUTPUT_THREAD
     pthread_join(writeFileId, NULL);
+    #endif
+#else
+    Free(fileBuffer);
 #endif
 
 #if MEASURING_LATENCY

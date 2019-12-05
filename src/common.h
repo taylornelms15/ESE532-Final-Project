@@ -19,7 +19,7 @@
 #define MAX_CHUNK_NUM (MAXINPUTFILESIZE / MINSIZE + 1)//may want to modify where/how this is declared
 
 #define INBUFFER_SIZE 2000000 //2MB incoming buffer
-#define OUTBUFFER_SIZE (INBUFFER_SIZE)
+#define OUTBUFFER_SIZE 2200000 //allow for maliciously uncompressable code
 
 
 #define MAX_CHUNKS_IN_HW_BUFFER (2 + (INBUFFER_SIZE) / MINSIZE)
@@ -35,7 +35,7 @@
 #define HASHROWS 1024
 #define HASHBITS 16
 #define HASHDEPTH 2
-#define SHANOTFOUND 0x1FFFF
+#define SHANOTFOUND 0xFFFFFFFF
 #define NUM_ENTRIES_PER_HASH_VALUE ((1 << (INDEXBITS - HASHBITS)) * HASHDEPTH)
 #define DRAM_PULL_SIZE (BYTES_PER_ROW * NUM_ENTRIES_PER_HASH_VALUE)
 #define NUMHASHBUCKETS (1 << HASHBITS)
@@ -45,8 +45,7 @@
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
-//#define HLS_PRINTF(format, ...) {}
-/*
+
 //this helps our HLS_PRINTF function work
 #ifdef __linux__
 #define HLS_PRINTF(format, ...) {}
@@ -55,7 +54,7 @@
 #define HLS_PRINTF(format, ...) printf(format, __VA_ARGS__)
 #endif
 
-*/
+
 
 
 
