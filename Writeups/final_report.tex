@@ -47,7 +47,9 @@ CDC performs chunking and the data is taken by SHA and LZW which operate paralle
 \section{10 Gbps design}
 
 \section{Validation techniques}
+As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
 
+We also use prints on the main arm core, that prints the bytes read by the network thread, to provide real time testing validation that all bytes are being read and no packets are being dropped. 
 \section{Key lessons learned}
 
 \section{Design space exploration}
