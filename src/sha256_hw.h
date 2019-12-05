@@ -16,7 +16,7 @@ void sha256_hw_wrapper(hls::stream<ap_uint<9>> &rabinToSHA, hls::stream< uint8_t
 #ifndef _SHA_256_HW
 #define _SHA_256_HW
 
-//#include <stdint.h>
+#include <stdint.h>
 #include "common.h"
 #include <hls_stream.h>
 

@@ -9,7 +9,7 @@
 #include "common.h"
 #include <hls_stream.h>
 
-//#include <stdint.h>
+#include <stdint.h>
 
 
 /**

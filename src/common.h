@@ -5,7 +5,7 @@
  */
 #ifndef COMMON_H
 #define COMMON_H
-#include <stdint.h>
+
 
 #define HALF_ENABLE_CPP11_CMATH 0
 
@@ -45,16 +45,17 @@
 
 #define MAXPKTSIZE 4096
 #define HEADER 2
-
+//#define HLS_PRINTF(format, ...) {}
+/*
 //this helps our HLS_PRINTF function work
 #ifdef __linux__
-#define HLS_PRINTF(format, ...) ;
+#define HLS_PRINTF(format, ...) {}
 #else
 #include <stdio.h>
 #define HLS_PRINTF(format, ...) printf(format, __VA_ARGS__)
 #endif
 
-
+*/
 
 
 

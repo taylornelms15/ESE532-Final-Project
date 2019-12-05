@@ -5,6 +5,7 @@
 
 #include "chunkdict_hw.h"
 #include "deduplicate_hw.h"
+#include "stdint.h"
 
 int counter_SHA = 0;
 int counter_LZW = 0;
@@ -136,12 +137,12 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
 
         outputPacket(deduplicateToOutput, packetSendSize);
 
-        //HLS_PRINTF("DEDUP\t%d\tR SHA %d\n", chunknumDedup, counter_SHA);
+        /*HLS_PRINTF("DEDUP\t%d\tR SHA %d\n", chunknumDedup, counter_SHA);
         HLS_PRINTF("DEDUP\t%d\tR LZW %d\n", chunknumDedup, counter_LZW);
         HLS_PRINTF("DEDUP\t%d\tW OUT %d\n", chunknumDedup, counter_Dwr);
-
+*/
         if (wasEndOfFile[0]){
-            HLS_PRINTF("DEDUP\t%d\tW TOTAL %d\n", chunknumDedup, counter_Dtot);
+   //         HLS_PRINTF("DEDUP\t%d\tW TOTAL %d\n", chunknumDedup, counter_Dtot);
             *outputDictIndex = outputIndex;
             return;
         }//if the last run was our final one

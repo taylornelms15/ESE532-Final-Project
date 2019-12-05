@@ -18,7 +18,7 @@
 #include "rabin.h"
 
 #define READING_FROM_SERVER 1
-//#define __linux__
+#define __linux__
 
 #if READING_FROM_SERVER
 #include "server.h"
@@ -48,7 +48,9 @@ static const char deviceOutfileName[] = "compress.dat";
 unsigned long long *out_table;
 unsigned long long *mod_table;
 uint32_t recvBytes = 0;
-int8_t go = 0;
+int8_t go_nw = 0;
+int8_t go_core = 0;
+int8_t go_nw_exit = 0;
 uint8_t go_write = 0;
 uint8_t end_write = 0;
 uint32_t dataSize = 0;
@@ -147,10 +149,16 @@ void *read_NW(void *arg) {
 
 	        currentIndex += thisPacketBytes;
 	        recvBytes += thisPacketBytes;
-	        if(recvBytes > INBUFFER_SIZE)
-	        	go = 1;
+	        if(recvBytes >= (go_nw + 1) * INBUFFER_SIZE) {
+	        	go_nw++;
+
+	        }
+
+
 	    }//while
-	go = 1;
+	go_nw++;
+	go_nw_exit = 1;
+
 	printf("Exiting NW thread\n");
 	pthread_exit(NULL);
 }
@@ -419,7 +427,7 @@ unsigned long long overallStart;
     //MAIN LOOP
     while(true) {
 #if READING_FROM_SERVER
-    	if(go == 0)
+    	if(go_core >= go_nw && go_nw_exit != 1)
         	continue;
 
 	#if MEASURING_LATENCY
@@ -433,6 +441,8 @@ unsigned long long overallStart;
         #if READING_FROM_SERVER
             readDataIntoBuffer(hwBuffer, packetBuffer, packetOffset, recvBytes);
         	packetOffset += nextBufferSize;
+        	go_core++;
+
         #else
             readDataIntoBuffer(hwBuffer,fileBuffer, fileOffset, fileSize);
             fileOffset += nextBufferSize;

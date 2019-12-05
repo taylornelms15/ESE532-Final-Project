@@ -8,6 +8,7 @@
 #include "lzw_hw.h"
 #include "sha256_hw.h"
 #include "rabin.h"
+#include "stdint.h"
 
 int counter_Hout = 0;
 
@@ -58,7 +59,7 @@ uint32_t finalOutput(hls::stream< ap_uint<9> > &deduplicateToOutput, uint8_t out
 
     }//for
 
-    HLS_PRINTF("OUT\t\tR DEDUP %d\n", counter_Hout);
+  //  HLS_PRINTF("OUT\t\tR DEDUP %d\n", counter_Hout);
     return numOutput;
 
 }//finalOutput

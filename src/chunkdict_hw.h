@@ -6,6 +6,7 @@
 #define CHUNKDICT_HW_H
 
 #include "common.h"
+#include "stdint.h"
 
 
 

@@ -4,6 +4,7 @@
 */
 
 #include "lzw_hw.h"
+#include "stdint.h"
 
 #define NONEFOUND 0x1FFF
 //Tunable design axis parameters
@@ -288,16 +289,16 @@ void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uin
         int endingByte = lzwCompressHW(rabinToLZW, lzwToDeduplicate);
         lzwToDeduplicate.write((ap_uint<9>) endingByte);
         counter_wr++;
-        HLS_PRINTF("LZW\t%d\tR RABIN %d\n", chunknumLZW, counter_rd);
+ //       HLS_PRINTF("LZW\t%d\tR RABIN %d\n", chunknumLZW, counter_rd);
         if (endingByte == ENDOFFILE){
-            HLS_PRINTF("LZW\t%d\tW DEDUP %d EOF\n", chunknumLZW, counter_wr);
+     //       HLS_PRINTF("LZW\t%d\tW DEDUP %d EOF\n", chunknumLZW, counter_wr);
             return;
         }
         else{
-            HLS_PRINTF("LZW\t%d\tW DEDUP %d EOC\n", chunknumLZW, counter_wr);
+ //           HLS_PRINTF("LZW\t%d\tW DEDUP %d EOC\n", chunknumLZW, counter_wr);
         }
     }
-    HLS_PRINTF("%d\t=================END OF THE FUCKING LOOP ALL HANDS ON DECK BITCHES==================\n", chunknumLZW);
+ //   HLS_PRINTF("%d\t=================END OF THE FUCKING LOOP ALL HANDS ON DECK BITCHES==================\n", chunknumLZW);
 }
 
 
