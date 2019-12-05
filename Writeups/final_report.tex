@@ -71,23 +71,23 @@ CDC performs chunking and the data is taken by SHA and LZW which operate paralle
 
 \section{10 Gbps design}
 
-As has been noted (TODO: note this somewhere), the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.\newline
+As has been noted (TODO: note this somewhere), the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.
+\par
 As such, we must examine possibilities for improvements in the abstract. In this section, we will discuss strategies for improving performance which, were we to work as diligently across the next $5$ weeks as we have for this previous $5$, would certainly yield performance improvements in pursuit of a $10Gbps$ goal.
-\newline\newline
-
+\newline\par
 Looking at our current design, we can approach designing a \texttt{10Gbps} design with the idea that the core functionality would still use logic almost entirely on the FPGA, but we could use more of our resources to solve the problem, and use as many tricks as possible to maximise the utility of the PL's time.
-\newline\newline
+\newline\par
 One of the first things we can see from our current resource usage is that we have a good number of BRAM's still available, as well as a large proportion of our FF/LUT resources.
 This opens us up to putting more SHA units (for the computational resources) and LZW units (for the memory resources) onto the PL, with the idea that one of the two (likely the former) is the bottleneck culprit.
-\newline
+\par
 With the idea that a singular \texttt{deduplicate} unit would still need to control output, we could link the \texttt{rabin} unit to the \texttt{deduplicate} unit by way of multiple parallel \texttt{SHA} units; for this example, we will imagine $2$ such units. This would allow us to alternate which unit hashed which series of chunks, allowing for an idealized $2x$ speedup on that axis.
-\newline
+\par
 As for the \texttt{LZW} unit, we could easily fit another onto the PL in the same fashion.
-\newline\newline
+\newline\par
 If the resources are not the bottleneck, then we would need to look into the process by which we are transferring data. the use of \texttt{hls::stream} FIFO units has been handy for automatically handling a lot of timing requirements, but they carry the disadvantage of limiting the rate by which we are (conceptually) pipelining data through our application.
-\newline\newline
+\par
 One way we could improve upon this would be to use multiple streams in parallel for our application; conceptually, this would be similar to, instead of sending water through a single garden hose, sending water through two parallel garden hoses.
-\newline\newline
+\par
 If our bottleneck in the PL is access to the shared memory inside which our SHA dictionary resides, we could mitigate that problem by decreasing the amount of memory we need to read. We could do this by expanding our shared memory hash table region; if we're expecting something along the lines of $2^{16}$ unique chunks in a file, we could allocate $2^{19}$, or more, total hash lines such that we would probabilistically only need to pull one hash line for any given SHA digest.
 \newline
 In this way, our total memory access would be in the range of $36$ bytes per chunk, rather than our current $144$. The disadvantage would be, we may need a particularly significant field of hash values to near-guarantee that we would not encounter any hash collisions that may break our design.
