@@ -46,10 +46,21 @@ CDC performs chunking and the data is taken by SHA and LZW which operate paralle
 
 \section{10 Gbps design}
 
-\section{Validation techniques}
-As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
+As has been noted (TODO: note this somewhere), the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.\newline
+As such, we must examine possibilities for improvements in the abstract. In this section, we will discuss strategies for improving performance which, were we to work as diligently across the next $5$ weeks as we have for this previous $5$, would certainly yield performance improvements in pursuit of a $10Gbps$ goal.
+\newline\newline
 
-We also use prints on the main arm core, that prints the bytes read by the network thread, to provide real time testing validation that all bytes are being read and no packets are being dropped. 
+Looking at our current design, we can approach designing a \texttt{10Gbps} design with the idea that the core functionality would still use logic almost entirely on the FPGA, but we could use more of our resources to solve the problem, and use as many tricks as possible to maximise the utility of the PL's time.
+\newline\newline
+One of the first things we can see from our current resource usage is that we have a good number of BRAM's still available, as well as a large proportion of our FF/LUT resources.
+This opens us up to putting more SHA units (for the computational resources) and LZW units (for the memory resources) onto the PL, with the idea that one of the two (likely the former) is the bottleneck culprit.
+With the idea that a singular \tecttt{deduplicate} unit would still need to control output, we could link the \texttt{rabin} unit to the \texttt{deduplicate} unit by way of multiple parallel \texttt{SHA} units; for this example, we will imagine $2$ such units. This would allow us to alternate which unit hashed which series of chunks, allowing for an idealized $2x$ speedup on that axis.
+As for the \texttt{LZW} unit, we could easily fit another onto the PL in the same fashion.
+\newline\newline
+If the resources are not the bottle
+
+\section{Validation techniques}
+
 \section{Key lessons learned}
 
 \section{Design space exploration}
