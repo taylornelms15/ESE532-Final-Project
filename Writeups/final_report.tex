@@ -91,7 +91,9 @@ Obviously, there are a lot of potential culprits, but the current front-runners 
 As has been noted, the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.
 \par
 As such, we must examine possibilities for improvements in the abstract. In this section, we will discuss strategies for improving performance which, were we to work as diligently across the next $5$ weeks as we have for this previous $5$, would certainly yield performance improvements in pursuit of a $10Gbps$ goal.
-\newline\par
+
+\subsection{With Hardware Bounds in Mind}
+
 Looking at our current design, we can approach designing a \texttt{10Gbps} design with the idea that the core functionality would still use logic almost entirely on the FPGA, but we could use more of our resources to solve the problem, and use as many tricks as possible to maximise the utility of the PL's time.
 \newline\par
 One of the first things we can see from our current resource usage is that we have a good number of BRAM's still available, as well as a large proportion of our FF/LUT resources.
@@ -112,9 +114,20 @@ In this way, our total memory access would be in the range of $36$ bytes per chu
 On our software side, we are currently using one thread/core purely to read in input, one to write to our output memory, and then one thread is copying memory to the FPGA working region, invoking the PL function, and then copying that memory out to a location from which the final thread writes.
 \newline\par
 A different implementation would more cleverly synchronize the operations that the middle thread performs, and make sure that the relevant memory copying did not need to happen (or at least, did not need to happen in a redundant fashion.)
-\newline\par
-How can we be sure these implementations would meet the \texttt{10Gbps} requirement? Frankly, we cannot. However, what we can do is make some estimates.
+
+\subsection{With No Hardware Bounds in Mind}
+
+If we distance ourselves from the bounds of the Ultra96 system, however, we can consider all manner of other design options.
 \par
+Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \textt{SHA} in parallel), and seeing what additional resources could add to our design.
+\newline\par
+One thing that could immediately help our design would be to have a fully-associative memory for the records of what the \texttt{SHA} digest was for each chunk index. Putting such a memory into small, local memories would allow for extremely fast lookups in service of deduplication.
+\par
+By removing the need for shared memory access, that bottleneck could be completely eliminated. Further, it would only take a roughly 5MB memory to do so.
+\newline\par
+Considering our PL resources, if \texttt{SHA} is the bottleneck, the operation could be distributed across a huge number of computational units. In a similar fashion, given that each chunk is independent from the perspective of the \texttt{LZW} functionality, as many hardware units as possible could be thrown at that problem.
+\par
+Going further, and expanding on the idea of parallel streams, any issues of transferring the data across FIFO units could be distributed to allow for, for instance, the \texttt{Rabin} computation or \texttt{Deduplication} units to pipeline data through at a quicker speed than would be otherwise possible, writing a larger number of bytes per FPGA "cycle" and further reduce the effective \texttt{II} of our \texttt{DATAFLOW}-pipelined design.
 
 
 \section{Validation techniques}
