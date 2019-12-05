@@ -77,32 +77,75 @@ It is invoked based on the existing synchronization mechanisms and it frees the 
 CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
 3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
 
+\subsection{Bottleneck}
+
+Thanks to our decision to leverage the \texttt{DATAFLOW} pragma to handle our data movement in the PL, we have exactly zero idea of what the bottleneck in our design is.
+\par
+I know, that's not a great answer. When we try to make traces of our program execution, no tools that xilinx provides us allow for any kind of per-element trace of execution, or logs of streams being full/empty, or any other kind of relevant information. The best we have to go on are estimates of latencies of our functions, but, given that some of them run across variable-length chunks a variable number of times within our hardware buffer, the ranges are huge, and not reflective of actual execution.
+\newline\par
+However, what we \textbf{can} do is make estimates of what the bottlenecks might be. For instance: with a hardware buffer a couple factors of scale past our largest chunk workload, we can estimate that the data movement to and from the FPGA is not the primary concern; that overhead should amortize out far past any dominating bottleneck term.
+\newline\par
+So where, in our core logic inside the PL, could the bottleneck be? It is possible that it is the compute within the \texttt{SHA} function; there are certainly a lot of loops to perform for each block of $512$ bytes, and that necessarily takes time.
+\par
+Alternatively, the \texttt{LZW} unit could be the bottleneck. Though the inner function, which operates on a per-chunk basis, has been pipelined down to an \texttt{II} of $6$ (at 200MHz) or $9$ (at 300MHz), the overhead of clearing the validity bits for its hash table could be styming its ability to efficiently handle data at a high throughput.
+\par
+Our current bottleneck suspect is the access to shared memory for looking at the dictionary of \texttt{SHA} digests; this necessarily stalls the \texttt{deduplicate} unit until it can read a (current) total of $144$ bytes from shared memory for each chunk, which it then compares against our incoming \texttt{SHA} value. Depending on how efficiently this operation can work, this may hang up the entire operation. It is also possible that having to wait for this to be done before beginning to output our constructed packet to our final output stream could be holding back the design.
+\par
+The rest of our operations should be safe from bottlenecks; the reading of hardware buffer input into streams, the output from the final stream, and the process of Rabin-fingerprinting have all been pipelined effectively to initiation intervals of less than or equal to $2$.
+\newline\par
+Obviously, there are a lot of potential culprits, but the current front-runners are likely the \texttt{SHA} unit and the lookup section of the \texttt{Deduplicate} unit.
 
 \section{10 Gbps design}
 
-As has been noted (TODO: note this somewhere), the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.\newline
+As has been noted, the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.
+\par
 As such, we must examine possibilities for improvements in the abstract. In this section, we will discuss strategies for improving performance which, were we to work as diligently across the next $5$ weeks as we have for this previous $5$, would certainly yield performance improvements in pursuit of a $10Gbps$ goal.
-\newline\newline
+
+\subsection{With Hardware Bounds in Mind}
 
 Looking at our current design, we can approach designing a \texttt{10Gbps} design with the idea that the core functionality would still use logic almost entirely on the FPGA, but we could use more of our resources to solve the problem, and use as many tricks as possible to maximise the utility of the PL's time.
-\newline\newline
+\newline\par
 One of the first things we can see from our current resource usage is that we have a good number of BRAM's still available, as well as a large proportion of our FF/LUT resources.
 This opens us up to putting more SHA units (for the computational resources) and LZW units (for the memory resources) onto the PL, with the idea that one of the two (likely the former) is the bottleneck culprit.
-\newline
+\par
 With the idea that a singular \texttt{deduplicate} unit would still need to control output, we could link the \texttt{rabin} unit to the \texttt{deduplicate} unit by way of multiple parallel \texttt{SHA} units; for this example, we will imagine $2$ such units. This would allow us to alternate which unit hashed which series of chunks, allowing for an idealized $2x$ speedup on that axis.
-\newline
+\par
 As for the \texttt{LZW} unit, we could easily fit another onto the PL in the same fashion.
-\newline\newline
+\newline\par
 If the resources are not the bottleneck, then we would need to look into the process by which we are transferring data. the use of \texttt{hls::stream} FIFO units has been handy for automatically handling a lot of timing requirements, but they carry the disadvantage of limiting the rate by which we are (conceptually) pipelining data through our application.
-\newline\newline
+\par
 One way we could improve upon this would be to use multiple streams in parallel for our application; conceptually, this would be similar to, instead of sending water through a single garden hose, sending water through two parallel garden hoses.
-\newline\newline
+\par
 If our bottleneck in the PL is access to the shared memory inside which our SHA dictionary resides, we could mitigate that problem by decreasing the amount of memory we need to read. We could do this by expanding our shared memory hash table region; if we're expecting something along the lines of $2^{16}$ unique chunks in a file, we could allocate $2^{19}$, or more, total hash lines such that we would probabilistically only need to pull one hash line for any given SHA digest.
-\newline
+\par
 In this way, our total memory access would be in the range of $36$ bytes per chunk, rather than our current $144$. The disadvantage would be, we may need a particularly significant field of hash values to near-guarantee that we would not encounter any hash collisions that may break our design.
-\newline\newline
+\newline\par
+On our software side, we are currently using one thread/core purely to read in input, one to write to our output memory, and then one thread is copying memory to the FPGA working region, invoking the PL function, and then copying that memory out to a location from which the final thread writes.
+\newline\par
+A different implementation would more cleverly synchronize the operations that the middle thread performs, and make sure that the relevant memory copying did not need to happen (or at least, did not need to happen in a redundant fashion.)
 
+\subsection{With No Hardware Bounds in Mind}
 
+If we distance ourselves from the bounds of the Ultra96 system, however, we can consider all manner of other design options.
+\par
+Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \textt{SHA} in parallel), and seeing what additional resources could add to our design.
+\newline\par
+One thing that could immediately help our design would be to have a fully-associative memory for the records of what the \texttt{SHA} digest was for each chunk index. Putting such a memory into small, local memories would allow for extremely fast lookups in service of deduplication.
+\par
+By removing the need for shared memory access, that bottleneck could be completely eliminated. Further, it would only take a roughly 5MB memory to do so.
+\newline\par
+Considering our PL resources, if \texttt{SHA} is the bottleneck, the operation could be distributed across a huge number of computational units. In a similar fashion, given that each chunk is independent from the perspective of the \texttt{LZW} functionality, as many hardware units as possible could be thrown at that problem.
+\par
+Going further, and expanding on the idea of parallel streams, any issues of transferring the data across FIFO units could be distributed to allow for, 
+for instance, the \texttt{Rabin} computation or \texttt{Deduplication} units to pipeline data through at a quicker speed than would be otherwise possible, 
+writing a larger number of bytes per FPGA "cycle" and further reduce the effective \texttt{II} of our \texttt{DATAFLOW}-pipelined design.
+\newline\par
+On the software side, we wouldn't anticipate needing sweeping structural changes. Instead, we would benefit from those cores being slightly faster. At \texttt{10Gbps}, a new byte is coming in roughly every cycle for a \texttt{1.2GHz} processor. 
+With a \texttt{2.4GHz} core, along with similarly-increased memory access capabilities, we could better assure that we did not drop packets somewhere in the process of moving all that data around.
+\par 
+As tempting as it would be to throw more threads at the task of reading input in, we fear that the overhead of synchronizing all such resources would outstrip the benefit of more processors doing the work.
+\par
+That said, a dedicated data mover and hardware buffer to handle the incoming data could allow for the best and safest resource handling at \texttt{10Gbps}.
 
 \section{Validation techniques}
 As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
