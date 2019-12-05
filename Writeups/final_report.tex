@@ -68,6 +68,15 @@ Finally upon exit, the NW thread indicates that it has completed its purpose and
 CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
 3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
 
+\subsection{Bottleneck}
+
+Thanks to our decision to leverage the \texttt{DATAFLOW} pragma to handle our data movement in the PL, we have exactly zero idea of what the bottleneck in our design is.
+\par
+I know, that's not a great answer. When we try to make traces of our program execution, no tools that xilinx provides us allow for any kind of per-element trace of execution, or logs of streams being full/empty, or any other kind of relevant information. The best we have to go on are estimates of latencies of our functions, but, given that some of them run across variable-length chunks a variable number of times within our hardware buffer, the ranges are huge, and not reflective of actual execution.
+\newline\par
+However, what we \textbf{can} do is make estimates of what the bottlenecks might be. For instance: with a hardware buffer a couple factors of scale past our largest chunk workload, we can estimate that the data movement to and from the FPGA is not the primary concern; that overhead should amortize out far past any dominating bottleneck term.
+\newline\par
+So where, in our core logic inside the PL, could the bottleneck be? It is possible that it is the compute within the \texttt{SHA} function; there are certainly a lot of loops to perform for each
 
 \section{10 Gbps design}
 
@@ -89,10 +98,15 @@ If the resources are not the bottleneck, then we would need to look into the pro
 One way we could improve upon this would be to use multiple streams in parallel for our application; conceptually, this would be similar to, instead of sending water through a single garden hose, sending water through two parallel garden hoses.
 \par
 If our bottleneck in the PL is access to the shared memory inside which our SHA dictionary resides, we could mitigate that problem by decreasing the amount of memory we need to read. We could do this by expanding our shared memory hash table region; if we're expecting something along the lines of $2^{16}$ unique chunks in a file, we could allocate $2^{19}$, or more, total hash lines such that we would probabilistically only need to pull one hash line for any given SHA digest.
-\newline
+\par
 In this way, our total memory access would be in the range of $36$ bytes per chunk, rather than our current $144$. The disadvantage would be, we may need a particularly significant field of hash values to near-guarantee that we would not encounter any hash collisions that may break our design.
-\newline\newline
-
+\newline\par
+On our software side, we are currently using one thread/core purely to read in input, one to write to our output memory, and then one thread is copying memory to the FPGA working region, invoking the PL function, and then copying that memory out to a location from which the final thread writes.
+\newline\par
+A different implementation would more cleverly synchronize the operations that the middle thread performs, and make sure that the relevant memory copying did not need to happen (or at least, did not need to happen in a redundant fashion.)
+\newline\par
+How can we be sure these implementations would meet the \texttt{10Gbps} requirement? Frankly, we cannot. However, what we can do is make some estimates.
+\par
 
 
 \section{Validation techniques}
