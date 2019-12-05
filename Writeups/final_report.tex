@@ -127,8 +127,16 @@ By removing the need for shared memory access, that bottleneck could be complete
 \newline\par
 Considering our PL resources, if \texttt{SHA} is the bottleneck, the operation could be distributed across a huge number of computational units. In a similar fashion, given that each chunk is independent from the perspective of the \texttt{LZW} functionality, as many hardware units as possible could be thrown at that problem.
 \par
-Going further, and expanding on the idea of parallel streams, any issues of transferring the data across FIFO units could be distributed to allow for, for instance, the \texttt{Rabin} computation or \texttt{Deduplication} units to pipeline data through at a quicker speed than would be otherwise possible, writing a larger number of bytes per FPGA "cycle" and further reduce the effective \texttt{II} of our \texttt{DATAFLOW}-pipelined design.
-
+Going further, and expanding on the idea of parallel streams, any issues of transferring the data across FIFO units could be distributed to allow for, 
+for instance, the \texttt{Rabin} computation or \texttt{Deduplication} units to pipeline data through at a quicker speed than would be otherwise possible, 
+writing a larger number of bytes per FPGA "cycle" and further reduce the effective \texttt{II} of our \texttt{DATAFLOW}-pipelined design.
+\newline\par
+On the software side, we wouldn't anticipate needing sweeping structural changes. Instead, we would benefit from those cores being slightly faster. At \texttt{10Gbps}, a new byte is coming in roughly every cycle for a \texttt{1.2GHz} processor. 
+With a \texttt{2.4GHz} core, along with similarly-increased memory access capabilities, we could better assure that we did not drop packets somewhere in the process of moving all that data around.
+\par 
+As tempting as it would be to throw more threads at the task of reading input in, we fear that the overhead of synchronizing all such resources would outstrip the benefit of more processors doing the work.
+\par
+That said, a dedicated data mover and hardware buffer to handle the incoming data could allow for the best and safest resource handling at \texttt{10Gbps}.
 
 \section{Validation techniques}
 As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
