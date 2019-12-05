@@ -162,15 +162,31 @@ But that incremental way of putting things in hardware helped us ultimately movi
 \newline\newline
 To make advantage of running in hardware. we used dataflow pragma and serialized everything so that as soon as the data is available, the hardware component can start processing on it. 
 \newline
-CDC provides chunk data to SHA and LZW simultaneously, which operate in parallel. The flow of our design is described by the following diagram:
+CDC provides chunk data to SHA and LZW simultaneously, which operate in parallel. The flow of our design is described in Figure 1.
 \newline\newline
-// TODO: Add diagram
-\newline\newline
+
+\begin{figure}
+  \includegraphics[width=\linewidth]{data_flow.jpg}
+  \caption{Data flow.}
+  \label{fig:data_flow}
+\end{figure}
+
 To save space on FPGA memory, we use shared memory to store our hash table for the deduplication step.
 Another optimization technique was to use separate arm cores to read the input data from ethernet, to process on the data and to write the data to the output file. 
 \newline
 That saves time in the sense that it doesn't have to wait for the data transmission to complete before it can start processing on the data already read. So, one core reads the data from the ethernet and writes it to the shared memory, another core reads it and transfers it to the FPGA as soon as 2MB data has been written to it, and the third core writes the output data as soon as the 2MB data has been processed in the FPGA. This makes the overall implementation faster. 
-\newline\newline
+\newline\newline\newline
+
+The changes in what speed we get while moving from all software to all hardware is shown in the following table:
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+ \hline
+ \textbf{Implementation}  & \textbf{All Software} & \textbf{LZW in hardware} & \textbf{All hardware} \\ 
+ \hline
+ \textbf{Speed}           & 15 mbps      & 10mbps          & 193 mbps \\ 
+ \hline
+\end{tabular}
+\end{center}
 
 \section{Individual contribution}
 
