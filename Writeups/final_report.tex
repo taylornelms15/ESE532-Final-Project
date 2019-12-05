@@ -76,11 +76,19 @@ I know, that's not a great answer. When we try to make traces of our program exe
 \newline\par
 However, what we \textbf{can} do is make estimates of what the bottlenecks might be. For instance: with a hardware buffer a couple factors of scale past our largest chunk workload, we can estimate that the data movement to and from the FPGA is not the primary concern; that overhead should amortize out far past any dominating bottleneck term.
 \newline\par
-So where, in our core logic inside the PL, could the bottleneck be? It is possible that it is the compute within the \texttt{SHA} function; there are certainly a lot of loops to perform for each
+So where, in our core logic inside the PL, could the bottleneck be? It is possible that it is the compute within the \texttt{SHA} function; there are certainly a lot of loops to perform for each block of $512$ bytes, and that necessarily takes time.
+\par
+Alternatively, the \texttt{LZW} unit could be the bottleneck. Though the inner function, which operates on a per-chunk basis, has been pipelined down to an \texttt{II} of $6$ (at 200MHz) or $9$ (at 300MHz), the overhead of clearing the validity bits for its hash table could be styming its ability to efficiently handle data at a high throughput.
+\par
+Our current bottleneck suspect is the access to shared memory for looking at the dictionary of \texttt{SHA} digests; this necessarily stalls the \texttt{deduplicate} unit until it can read a (current) total of $144$ bytes from shared memory for each chunk, which it then compares against our incoming \texttt{SHA} value. Depending on how efficiently this operation can work, this may hang up the entire operation. It is also possible that having to wait for this to be done before beginning to output our constructed packet to our final output stream could be holding back the design.
+\par
+The rest of our operations should be safe from bottlenecks; the reading of hardware buffer input into streams, the output from the final stream, and the process of Rabin-fingerprinting have all been pipelined effectively to initiation intervals of less than or equal to $2$.
+\newline\par
+Obviously, there are a lot of potential culprits, but the current front-runners are likely the \texttt{SHA} unit and the lookup section of the \texttt{Deduplicate} unit.
 
 \section{10 Gbps design}
 
-As has been noted (TODO: note this somewhere), the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.
+As has been noted, the fact that we are operating on a \texttt{DATAFLOW} model means that our ability to peek inside the specifics of our design is limited. Xilinx does not like putting that many (read: any) calipers on the internals of our hardware function.
 \par
 As such, we must examine possibilities for improvements in the abstract. In this section, we will discuss strategies for improving performance which, were we to work as diligently across the next $5$ weeks as we have for this previous $5$, would certainly yield performance improvements in pursuit of a $10Gbps$ goal.
 \newline\par
