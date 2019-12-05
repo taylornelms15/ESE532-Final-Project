@@ -143,7 +143,7 @@ void deduplicate_hw(hls::stream< uint8_t > &shaToDeduplicate,
 */
         if (wasEndOfFile[0]){
    //         HLS_PRINTF("DEDUP\t%d\tW TOTAL %d\n", chunknumDedup, counter_Dtot);
-            *outputDictIndex = outputIndex;
+            outputDictIndex[0] = outputIndex;
             return;
         }//if the last run was our final one
 

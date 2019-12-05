@@ -59,7 +59,7 @@ void sha256_hw_transform(hls::stream<ap_uint<9> > &data, unsigned int state[8])
 		counter_hw += 4;
 	}
 
-	loop_2:for ( ; i < 64; ++i)
+	loop_2:for ( i = 16; i < 64; ++i)
 	{
 //#pragma HLS unroll factor=2
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
@@ -132,7 +132,7 @@ int sha256_hw_compute(hls::stream<ap_uint<9> >& data, hls::stream< uint8_t >& ha
 #pragma HLS STREAM variable=subchunk depth=2048
 	for(uint16_t i = 0; i < MAXCHUNKLENGTH + 5; i++)
 	{
-#pragma HLS loop_tripcount min=0 avg=4000 max=8000
+#pragma HLS loop_tripcount min=1 avg=2048 max=6144
 
 		byte = data.read();
 		counter++;

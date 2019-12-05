@@ -233,8 +233,8 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     ap_uint<ROWBITS> curTableRow = (ap_uint<ROWBITS>)(input.read());
     counter_rd++;
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
-		#pragma HLS loop_tripcount min=1024 max=6144 avg=3072
-        #pragma HLS pipeline II=8//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
+		#pragma HLS loop_tripcount min=1022 max=6144 avg=3072
+        #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
         counter_rd++;
         if (readChar > 255){
@@ -298,7 +298,6 @@ void lzwCompressAllHW(hls::stream< ap_uint<9> > &rabinToLZW, hls::stream< ap_uin
  //           HLS_PRINTF("LZW\t%d\tW DEDUP %d EOC\n", chunknumLZW, counter_wr);
         }
     }
- //   HLS_PRINTF("%d\t=================END OF THE FUCKING LOOP ALL HANDS ON DECK BITCHES==================\n", chunknumLZW);
 }
 
 

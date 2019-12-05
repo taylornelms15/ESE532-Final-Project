@@ -158,7 +158,7 @@ void rabin_next_chunk_HW(hls::stream<ap_uint<9> > &readerToRabin, hls::stream<ap
 
 	chunk_loop:for (unsigned int i = 0; i < INBUFFER_SIZE + MAX_CHUNKS_IN_HW_BUFFER + 1; i++) {
 		#pragma HLS loop_tripcount min=1024 max=8192
-		#pragma HLS pipeline II=1
+		#pragma HLS pipeline II=2
          ap_uint<9> val = readerToRabin.read();
          uint8_t b = val & 0xff;
         out = window[wpos];

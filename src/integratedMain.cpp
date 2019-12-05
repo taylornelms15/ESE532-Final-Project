@@ -384,7 +384,7 @@ uint32_t readDataIntoBuffer(uint8_t* hwBuffer, uint8_t* fileBuffer, uint32_t fil
 
 int main(int argc, char* argv[]){
 
-	printf("VERSION NUMBER 0.0.3\n");
+	printf("VERSION NUMBER 0.0.4\n");
 
     #ifdef __SDSCC__//mount SD card
     #ifndef __linux__

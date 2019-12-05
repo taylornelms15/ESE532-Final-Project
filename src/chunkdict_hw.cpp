@@ -98,17 +98,17 @@ void memcpyRow(uint8_t dst[BYTES_PER_ROW], const uint8_t src[BYTES_PER_ROW]){
 }
 void memcpy4F(uint8_t* dst, const uint32_t src){
 	#pragma HLS inline
-	dst[0] = (uint8_t) (src >> 0);
-	dst[1] = (uint8_t) (src >> 8);
-	dst[2] = (uint8_t) (src >> 16);
-	dst[3] = (uint8_t) (src >> 24);
+	dst[0] = (uint8_t) (src >> 24);
+	dst[1] = (uint8_t) (src >> 16);
+	dst[2] = (uint8_t) (src >> 8);
+	dst[3] = (uint8_t) (src >> 0);
 }
 void memcpy4B(uint32_t* dst, const uint8_t* src){
 	#pragma HLS inline
-	*dst = (((uint32_t) src[0]) << 0) |
-           (((uint32_t) src[1]) << 8) |
-           (((uint32_t) src[2]) << 16) |
-           (((uint32_t) src[3]) << 24);
+	*dst = (((uint32_t) src[0]) << 24) |
+           (((uint32_t) src[1]) << 16) |
+           (((uint32_t) src[2]) << 8) |
+           (((uint32_t) src[3]) << 0);
 }
 
 
