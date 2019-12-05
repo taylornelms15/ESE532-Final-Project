@@ -102,7 +102,14 @@ We also use prints on the main arm core, that prints the bytes read by the netwo
 \section{Key lessons learned}
 
 \section{Design space exploration}
+Describe design space explored and show graphs and models to support design selection
+For our earlier implementation in which we were running only LZW in hardware, the data was being sent to hardware for LZW and then the output back to the processor region to do the next steps in the computation, which led to very low speed of the overall implementation because of this data transfer overhead and most of the part still running in software. But that incremental way of putting things in hardware helped us ultimately moving the entire design to the hardware. So, now all the components CDC, SHA, LZW and deduplication all run in hardware. This removed the delay of transferring intermediate results between the FPGA and the processor region and also increased the overall speed because of hardware acceleration techniques like using pipelining, unrolling, partitioning arrays etc.
+To make advantage of running in hardware. we used dataflow pragma and serialized everything so that as soon as the data is available, the hardware component can start processing on it. 
+CDC provides chunk data to SHA and LZW simultaneously, which operate in parallel. The flow of our design is described by the following diagram:
+// TODO: Add diagram
 
+To save space on FPGA memory, we use shared memory to store our hash table for the deduplication step.
+Another optimization technique was to use separate arm cores to read the input data from ethernet, to process on the data and to write the data to the output file. That saves time in the sense that it doesn't have to wait for the data transmission to complete before it can start processing on the data already read. 
 \section{Individual contribution}
 
 \section{Academic code of integrity}
