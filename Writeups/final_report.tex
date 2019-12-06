@@ -366,7 +366,7 @@ With efficient encoding, there should be roughly one memory read and one memory 
  \hline
  ARM L2 Cache  &  3   &  3 * (2.18 (data) + 0.15(tag)) = 6.99\\
  \hline
- LUTs   &   3357(SHA) + 3254(2999) + 1383(CDC) + 15876(Dedup)   &  0.72  \\
+ LUTs   &   3357(SHA) + 3254(LZW) + 1383(CDC) + 15876(Dedup)   &  0.72  \\
  \hline
  DSPs   &   1(SHA) + 0(LZW) + 0(CDC)    & 0.01\\
  \hline
@@ -374,7 +374,7 @@ With efficient encoding, there should be roughly one memory read and one memory 
  \hline
  DMA    &   1 &   0.1\\
  \hline
- BRAMs  &   &   11.47\\
+ BRAMs  & 5.315 +  2.86 + 4.64 + 0.092  &   12.91\\
  \hline
  
 \end{tabular}
@@ -428,6 +428,34 @@ On our software side, we are currently using one thread/core purely to read in i
 Another useful mechanism would be to ramp up the pipeline using async and wait pragmas when pushing in the data from the PS to the PL dataflow stream. This allows the data transfer to be hidden behind the computation occurring on the FPGA. While this was a possible avenue, it took a low priority to the fact that leveraging dataflow had its own complexities.
 \newline\par
 A different implementation would more cleverly synchronize the operations that the middle thread performs, and make sure that the relevant memory copying did not need to happen (or at least, did not need to happen in a redundant fashion.)
+
+\subsection{Area estimations 10Gbps}
+Assuming 4SHA's, 4LZW's and 2 streams.
+\newline
+\begin{center}
+\begin{tabular}{ |c|c|c| } 
+ \hline
+ \textbf{Unit}  & \textbf{Unit cost} & \textbf{Area} \\ 
+ \hline
+ Fixed Area   &     1    & 10  \\
+ \hline
+ ARM Cortex-A53  & 3  & 6\\
+ \hline
+ ARM L2 Cache  &  3   &  3 * (2.18 (data) + 0.15(tag)) = 6.99\\
+ \hline
+ LUTs   &   4 * 3357(SHA) + 4 * 3254(LZW) + 1383(CDC) + 15876(Dedup)   &  1.31  \\
+ \hline
+ DSPs   &   4(SHA) + 0(LZW) + 0(CDC)    & 0.04\\
+ \hline
+ Multipliers    &   0(SHA) + 0(CDC) + 0 (LZW)   &   0\\
+ \hline
+ DMA    &   2 &   0.2\\
+ \hline
+ BRAMs  & 5.315 +  4 * 2.86 + 4.64 + 4 * 0.092  &   21.763\\
+ \hline
+ 
+\end{tabular}
+\end{center}
 
 \subsection{With No Hardware Bounds in Mind}
 
