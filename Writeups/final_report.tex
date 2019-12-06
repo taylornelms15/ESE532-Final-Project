@@ -356,6 +356,32 @@ With efficient encoding, there should be roughly one memory read and one memory 
 
 \end{enumerate}%3d
 
+\subsection{Area estimations}
+\begin{center}
+\begin{tabular}{ |c|c|c| } 
+ \hline
+ \textbf{Unit}  & \textbf{Unit cost} & \textbf{Area} \\ 
+ \hline
+ Fixed Area   &     1    & 10  \\
+ \hline
+ ARM Cortex-A53  & 1  & 2\\
+ \hline
+ ARM L2 Cache  &  1   &  2.18 (data) + 0.15(tag) = 2.33\\
+ \hline
+ LUTs   &   56272(SHA) + 3254(LZW) + 8285(CDC)   &  2.03  \\
+ \hline
+ DSPs   &   1(SHA) + 0(LZW) + 0(CDC)    & 0.01\\
+ \hline
+ Multipliers    &   0(SHA) + 0(CDC) + 0 (LZW)   &   0\\
+ \hline
+ DMA    &   1(SHA) + 1(LZW) +1(SHA) &   0.3\\
+ \hline
+ BRAMs  &   &   0.0092(SHA) + 1.37(CDC) + 10.1(LZW) = 11.47\\
+ \hline
+  
+\end{tabular}
+\end{center}
+
 \subsection{Bottleneck}
 
 Thanks to our decision to leverage the \texttt{DATAFLOW} pragma to handle our data movement in the PL, we have exactly zero idea of what the bottleneck in our design is.
