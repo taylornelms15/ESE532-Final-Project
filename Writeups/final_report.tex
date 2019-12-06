@@ -26,6 +26,40 @@ As such, you must excuse us if we are light on some empiric details, as we, even
 
 \section{Single ARM processor design}
 
+\subsection{Performance achieved and Energy required:}
+The throughput performance achieved for an all software design, i.e, where each of the algorithms were running on the Arm core was 7Mbps. 
+\newline\newline 
+The energy required for this design was 
+Power = 2.22W 
+\newline
+Time = 40 minutes = 2400 seconds
+\newline
+Energy = PT = 2.22 * 2400 
+\newline
+       = 5328 Joules
+
+\subsection{Compression achieved: }
+    Input file : vmlinuz.tar       
+    \newline
+    Input size : 66MB
+    \newline
+    Compressed size: 36.6MB
+    \newline\newline
+
+\subsection{Time spent on major components:}
+
+Rabin : 286011cycles
+\newline
+        Throughput : 59Mbps
+\newline\newline
+Sha : 407923 cycles
+\newline
+      Throughput : 41.53Mbps
+\newline\newline
+LZW : 1023284 cycles
+\newline
+Throughput : 16.56Mbps
+\newline
 
 
 \section{Ultra 96 design}
@@ -90,7 +124,7 @@ The network thread is bound to run only on core 2.
 \newline
 
 \subsubsection{Network thread functionality} 
-\newline\newline
+
 The thread uses a 200MB input buffer that is shared between the cores 2 and 0.
 \newline
 The NW thread then reads packets, calculates the length of each packet and then copies over the bytes to the buffer.
@@ -104,7 +138,7 @@ Finally upon exit, the NW thread indicates that it has completed its purpose and
 \newline
 
 \subsubsection{Output thread functionality}
-\newline\newline
+
 There is a 3rd thread outside of the main and network thread that is tasked with writing processed data onto a file. 
 \par
 The output thread is bound to core 3 and it is responsible for opening, closing files and of course writing the data to the file. 
@@ -169,7 +203,7 @@ we allowed a factor-of-2 safety on our hash function, leading to $4$ records per
 There's a reasonable chance that this decision
 is leading to our woes of things not working; a larger stretch of time would have allowed for better analysis on this point.
 
-\newline\par
+\par
 The rest of the function was pedestrian by comparison; it reads the entire \texttt{LZW} stream (so no excess data is left) into a buffer,
 as well as the entire incoming \texttt{SHA} digest that corresponds to it.
 \par
