@@ -226,7 +226,33 @@ as well as the entire incoming \texttt{SHA} digest that corresponds to it.
 Depending on whether or not there was a match in our dictionary, the relevant header is made for the output chunk,
 and either just that header, or the entire LZW-compressed section, is sent to the output stream.
 
-\section{Memory and computation model}
+
+\subsection{Mapping to Zynq}
+\begin{figure}[hbt!]
+  \includegraphics[width=80mm, scale=0.5]{rabin.png}
+  \caption{CDC Mapping.}
+  \label{fig:cdc_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{sha.png}
+  \caption{SHA Mapping.}
+  \label{fig:sha_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{lzw.png}
+  \caption{LZW Mapping.}
+  \label{fig:lzw_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{deduplicate.png}
+  \caption{Deduplicate Mapping.}
+  \label{fig:deduplicate_mapping}
+\end{figure}
+
+\subsection{Memory and computation model}
 \item%b % memory requirements
 \textbf{Memory Requirements}
 \begin{enumerate}[label=(\roman*)]
@@ -307,32 +333,6 @@ With efficient encoding, there should be roughly one memory read and one memory 
 
 \end{enumerate}%3d
 
-\subsection{Mapping to Zynq}
-\begin{figure}[hbt!]
-  \includegraphics[width=80mm, scale=0.5]{rabin.png}
-  \caption{CDC Mapping.}
-  \label{fig:cdc_mapping}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=80mm, scale=0.5]{sha.png}
-  \caption{SHA Mapping.}
-  \label{fig:sha_mapping}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=80mm, scale=0.5]{lzw.png}
-  \caption{LZW Mapping.}
-  \label{fig:lzw_mapping}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=80mm, scale=0.5]{deduplicate.png}
-  \caption{Deduplicate Mapping.}
-  \label{fig:deduplicate_mapping}
-\end{figure}
-
-
 \subsection{Bottleneck}
 
 Thanks to our decision to leverage the \texttt{DATAFLOW} pragma to handle our data movement in the PL, we have exactly zero idea of what the bottleneck in our design is.
@@ -405,12 +405,11 @@ That said, a dedicated data mover and hardware buffer to handle the incoming dat
 
 \section{Validation techniques}
 As of now the main validation technique is to run a script that can decode the compress.dat file generated from the application and then compares it with the input file that was sent over the network. 
-
+\newline\newline
 We also use prints on the main arm core, that prints the bytes read by the network thread, to provide real time testing validation that all bytes are being read and no packets are being dropped. 
-\section{Key lessons learned}
-
-\section{Design space exploration}
-
+\newline\newline
+Since we are using separate cores for reading from network and writing to the file, it should not affect the timing of the core doing the processing. We are also using sync primitives to ensure correct order of operations.
+\newline\newline
 \section{Key lessons learned}
 \begin{description}
   \item[$\bullet$ ] It is always good to define the interfaces first and make a working implementation first and then incrementally add functionalities so that we always have something to fall back to ans start with a working code again.
