@@ -16,7 +16,8 @@
 
 \section{Introduction}
 The elephant in the room for the entirety of our implementation is that, as of 24 hours before the due date of this project, it is not functioning correctly.
-It gets through the entirely of the input, and (finally) does not hang in the middle of a deadlock or infinite loop somewhere in hardware, but upon encoding and decoding some files (particuarly, long binary files), the decoded version does not match the original.
+It gets through the entirely of the input, and (finally) does not hang in the middle of a deadlock or infinite loop somewhere in hardware, but upon encoding and decoding some files (particularly, long binary files), the decoded version does not match the original.
+It is important to note it does work successfully end to end for some of the files, and those same files if duplicated to a large size also work end to end. 
 \newline\newline
 Now, that does not mean we cannot obtain reasonable ideas as to performance, area/time costs, etc. for our design. However, concerns such as specific design axes eluded us through development because we were unable to reach the essential milestone of "a working design."
 \newline\newline
@@ -423,6 +424,8 @@ If our bottleneck in the PL is access to the shared memory inside which our SHA 
 In this way, our total memory access would be in the range of $36$ bytes per chunk, rather than our current $144$. The disadvantage would be, we may need a particularly significant field of hash values to near-guarantee that we would not encounter any hash collisions that may break our design.
 \newline\par
 On our software side, we are currently using one thread/core purely to read in input, one to write to our output memory, and then one thread is copying memory to the FPGA working region, invoking the PL function, and then copying that memory out to a location from which the final thread writes.
+\newline\par 
+Another useful mechanism would be to ramp up the pipeline using async and wait pragmas when pushing in the data from the PS to the PL dataflow stream. This allows the data transfer to be hidden behind the computation occurring on the FPGA. While this was a possible avenue, it took a low priority to the fact that leveraging dataflow had its own complexities.
 \newline\par
 A different implementation would more cleverly synchronize the operations that the middle thread performs, and make sure that the relevant memory copying did not need to happen (or at least, did not need to happen in a redundant fashion.)
 
