@@ -15,15 +15,15 @@
 \maketitle
 
 \section{Introduction}
-The elephant in the room for the entirety of our implementation is that, as of 24 hours before the due date of this project, it is not functioning correctly.
-It gets through the entirely of the input, and (finally) does not hang in the middle of a deadlock or infinite loop somewhere in hardware, but upon encoding and decoding some files (particularly, long binary files), the decoded version does not match the original.
+Our implementation as of writing this report is functioning partially. We got through a lot of hidden hardware conundrums to get this design that processes successfully but carries some hidden logic error within the dataflow.
+In effect, it gets through the entirety of the input, and (finally) does not hang in the middle of a deadlock or infinite loop somewhere in hardware, but upon encoding and decoding some files (particularly, long binary files), the decoded version does not match the original.
 It is important to note it does work successfully end to end for some of the files, and those same files if duplicated to a large size also work end to end. 
 \newline\newline
-Now, that does not mean we cannot obtain reasonable ideas as to performance, area/time costs, etc. for our design. However, concerns such as specific design axes eluded us through development because we were unable to reach the essential milestone of "a working design."
+We will do our best within this scenario to reason about performance, area/time costs, etc. for our design. However, concerns such as specific design axes eluded us through development because we were unable to reach the essential milestone of "a working design."
 \newline\newline
-This is all to say that, while we cannot empirically verify any results of design changes, or give good accounts of verification strategies, what we \textbf{can} do is evaluate design decisions we could have made through the process, and analyze what kind of effects they would have on a mythical end result where our software worked.
+This is all to say that, while we cannot empirically verify any results of design changes, or give good accounts of verification strategies, what we \textbf{can} do is evaluate design decisions we could have made through the process, and analyze what kind of effects they would have on an end result where our software worked flawlessly.
 \newline\newline
-As such, you must excuse us if we are light on some empiric details, as we, even in this final stretch, endeavor to improve our design to the point of functionality. 90-minute build times are, unfortunately, not condusive to rapid prototyping, so we will do what we can to represent our control of the source material in an academic sense, if not always a practical one.
+We may perhaps be light on some empiric details, as we, even in this final stretch, endeavor to improve our design to the point of functionality. 90-minute build times are, unfortunately, not condusive to rapid prototyping, so we will do what we can to represent our control of the source material in an academic sense, if not always a practical one.
 
 \section{Single ARM processor design}
 \subsection{Key parameters:}
