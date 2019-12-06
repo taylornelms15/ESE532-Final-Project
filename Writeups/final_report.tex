@@ -78,12 +78,6 @@ Throughput : 16.56Mbps
 
 
 \section{Ultra 96 design}
-– Performance achieved and energy required
-– Compression achieved
-– Key design aspects: task decomposition, parallelism, mapping to Zynq resources, include diagrams to support
-– Be clear where each component of the final design is performed (e.g., ARM, NEON vector, FPGA logic).
-– Model to explain performance, area, and energy of design
-– Current bottleneck preventing higher performance
 
 All the components CDC, SHA, LZW and deduplication operate in hardware. 
 Input data is read from network and it is processed in 2MB parts. 
@@ -160,10 +154,13 @@ The output thread is bound to core 3 and it is responsible for opening, closing 
 It is invoked based on the existing synchronization mechanisms and it frees the processor 0 from having to deal with write backs to the file. 
 \newline
 
-CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
-3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
-
 \subsection{FPGA Design}
+
+The design is implemented using the dataflow model. From our previous milestone implementation we had all the components on the hardware and micro-pipelined. In this design we added the macro-pipeline in the form of dataflow. 
+\newline\newline
+CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file.
+\newline\newline
+3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file. 
 
 \subsection{Performance achieved}
 For linux.tar, we got 193 Mbps. That is the maximum speed we got. For smaller files, the speed was less than this. 
@@ -459,12 +456,18 @@ We also use prints on the main arm core, that prints the bytes read by the netwo
 \newline\newline
 Since we are using separate cores for reading from network and writing to the file, it should not affect the timing of the core doing the processing. We are also using sync primitives to ensure correct order of operations.
 \newline\newline
+Used HLS simulation to test logic for our designs before importing it to the actual hardware. So internal functionality was validated in HLS as well. 
+\newline\newline
+Using counters in the HLS design to ensure that hangs were not occurring. This was the easiest mechanism to test the dataflow model in the absence of emulation.
 \section{Key lessons learned}
 \begin{description}
   \item[$\bullet$ ] It is always good to define the interfaces first and make a working implementation first and then incrementally add functionalities so that we always have something to fall back to ans start with a working code again.
   \item[$\bullet$ ] In our particular case of putting all pieces into hardware with streaming interfaces, this would have likely meant almost completely ignoring one of the milestones in an effort to put all of our separate pieces into hardware simultaneously. While this may not have made the grader happy, it would have pushed our hardware integration much earlier and allowed for less late-game hand-wringing.
   \item[$\bullet$ ] We learned how to make decisions when there is a memory-time trade off as there are limited memory and processing resources on the FPGA. 
   \item[$\bullet$ ] We learned to use many more optimization techniques by using various pragmas to decrease the time it takes to run and also the memory it takes. 
+  \item[$\bullet$ ] We became quite familiar with how to design code for hardware. Using appropriate simulation tools like HLS to analyze and figure out a good pipeline depth implementation for each algorithm.
+  \item[$\bullet$ ] Used emulation as well but with a hack since it does not have filesystem support. Was used in solving a data transfer hang so was eventually rewarding. Unfortunately couldn't be scaled to our final design due to FileSystem read restrictions.
+  \item[$\bullet$ ] We learnt a lot poring over the documentations that Xilinx provides for its tools. It helped shape our implementation and designs. The caveat is that the SDX tool provided moments of pure frustration with its obscure error messages.
   \item[$\bullet$ ] While the \texttt{DATAFLOW} pragma allowed for a lot of data movement simplifications, Xilinx's stubborn determination to hide any reasonable or analysis information about its implementation ended up shooting us in the foot for both debugging and this report. In the future, we would pursue options that have mature debugging and analysis outputs.
   \item[$\bullet$ ] Careful debug output on our end through the process might have prevented some of the frustrations with Xilinx's systematic failure to elaborate on build errors.
 
@@ -515,6 +518,7 @@ The new approach using dataflow and every component in hardware boosted the spee
 
 \par
 Taylor implemented the LZW, chunkdict associative map and the basic framework for the Dataflow model. 
+\newline\newline
 Nishanth worked on the Rabin CDC functionality and also implemented the network and output threads on each core.
 \newline\newline
 Ritika worked on SHA software and hardware implementations.
