@@ -8,7 +8,7 @@
 
 #define NONEFOUND 0x1FFF
 //Tunable design axis parameters
-#define HDEPTH 32//depth of the hash bucket (capacity = (8k vals / 1k rows) * (4x capacity variance buffer))
+#define HDEPTH 30//depth of the hash bucket (capacity = (8k vals / 1k rows) * (4x capacity variance buffer))
 #define ROWNUM (MAXCHUNKLENGTH)
 #define ROWBITS 13//log2(number of rows)
 #define COLNUM (MAXCHARVAL)
@@ -234,7 +234,7 @@ int lzwCompressHW(hls::stream< ap_uint<9> > &input, hls::stream< ap_uint<9> > &o
     counter_rd++;
     for(uint16_t iidx = 1; iidx <= MAXCHUNKLENGTH; iidx++) {
 		#pragma HLS loop_tripcount min=1022 max=6144 avg=3072
-        #pragma HLS pipeline II=6//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
+        #pragma HLS pipeline II=8//ideally 2 because we may need to write to output stream twice; using 6 to meet timing reqs
         ap_uint<9> readChar = input.read();
         counter_rd++;
         if (readChar > 255){

@@ -12,7 +12,6 @@
 #include <string.h>
 #include <pthread.h>
 
-
 #include "common.h"
 #include "hardwareWrapper.h"
 #include "rabin.h"
