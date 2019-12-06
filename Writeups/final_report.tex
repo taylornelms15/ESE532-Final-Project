@@ -25,6 +25,21 @@ This is all to say that, while we cannot empirically verify any results of desig
 As such, you must excuse us if we are light on some empiric details, as we, even in this final stretch, endeavor to improve our design to the point of functionality. 90-minute build times are, unfortunately, not condusive to rapid prototyping, so we will do what we can to represent our control of the source material in an academic sense, if not always a practical one.
 
 \section{Single ARM processor design}
+\subsection{Key parameters:}
+The key parameters involved in the original ARM processor design are:
+\newline\newline
+Reading data from the Filesystem.
+\newline
+Processing fingerprints in Rabin CDC and passing the chunks to SHA.
+\newline
+SHA calculates the SHA on each chunk. 
+\newline
+If there is no SHA match from the SHA table, it sends data to LZW.
+\newline
+LZW compresses the chunks.
+\newline
+Finally the chunk is packed into a file.
+\newline
 
 \subsection{Performance achieved and Energy required:}
 The throughput performance achieved for an all software design, i.e, where each of the algorithms were running on the Arm core was 7Mbps. 
@@ -170,7 +185,6 @@ The one exception to this was the output from the \texttt{SHA} unit, as its outp
 \subsubsection{Rabin Fingerprinting}
 
 \subsubsection{SHA-256}
-
 It takes streamed input from CDC, collects 64 bytes of data and performs its computation on that sub-chunk. Due to the sequential nature of SHA, it collects 64 bytes for each sun-chunk and computes them in a pipelined fashion. Once it is done with one chunk, it streams out the 256 bit (32 byte) SHA value for that chunk. Due to the dataflow pragma, SHA doesn't wait for the entire chunk to be read in before starting its computation. It starts operating as soon as there is some data available in the input stream.
 
 \subsubsection{LZW}
