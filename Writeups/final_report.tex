@@ -102,6 +102,23 @@ The one exception to this was the output from the \texttt{SHA} unit, as its outp
 
 \subsubsection{LZW}
 
+Given that the algorithm for compression itself involves, conceptually, one memory lookup, one memory write, and one read from the input stream for each incoming byte,
+a streaming and pipelined approach seemed most appropriate.
+\par
+As it stands, we implement this operation using a small hash table and simplistic hash function which uses as its 'key'
+the conceptual address of the 'large-memory' LZW-table implementation (which would require 8k rows of $256$ columns each, each of which would contain a $13$-bit value).
+\par
+For this, we elected to hash this key down to 10 bits, using an arbitrary (but relatively effective) hash function to cut down on computational requirements.
+This meant we had $1024$ hash rows, and we elected to allow for $24$ entries into each; a factor of $8$ was used to allow for the potential $8k$ table rows, and an extra factor of $3$ was to allow for hash collisions and similar overflows.
+\par
+A more careful implementation would allow for a small associative memory to handle such overflow; however, given the time constraints, we did not do this.
+\newline\par
+The one last consideration we had was the burden of 'resetting' the table for each chunk.
+Writing all of the values to our chosen 'Not Found' value (\texttt{0x1FFF}) would be a huge memory strain.
+\par
+As such, we elected to have another table of validity bits, to mark which parts of the LZW hash table were valid for that iteration.
+This would require only $1024$ 24-bit values, which were easier to reset for each chunk than the entire hash table.
+
 \subsubsection{Deduplication}
 
 This function includes the calls to the \texttt{chunkDict} location of shared memory, containing the records of each \texttt{SHA} digest and its matching index.
