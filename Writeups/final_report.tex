@@ -292,8 +292,12 @@ We also use prints on the main arm core, that prints the bytes read by the netwo
 \section{Key lessons learned}
 \begin{description}
   \item[$\bullet$ ] It is always good to define the interfaces first and make a working implementation first and then incrementally add functionalities so that we always have something to fall back to ans start with a working code again.
+  \item[$\bullet$ ] In our particular case of putting all pieces into hardware with streaming interfaces, this would have likely meant almost completely ignoring one of the milestones in an effort to put all of our separate pieces into hardware simultaneously. While this may not have made the grader happy, it would have pushed our hardware integration much earlier and allowed for less late-game hand-wringing.
   \item[$\bullet$ ] We learned how to make decisions when there is a memory-time trade off as there are limited memory and processing resources on the FPGA. 
   \item[$\bullet$ ] We learned to use many more optimization techniques by using various pragmas to decrease the time it takes to run and also the memory it takes. 
+  \item[$\bullet$ ] While the \texttt{DATAFLOW} pragma allowed for a lot of data movement simplifications, Xilinx's stubborn determination to hide any reasonable or analysis information about its implementation ended up shooting us in the foot for both debugging and this report. In the future, we would pursue options that have mature debugging and analysis outputs.
+  \item[$\bullet$ ] Careful debug output on our end through the process might have prevented some of the frustrations with Xilinx's systematic failure to elaborate on build errors.
+
 
 \end{description}
 
