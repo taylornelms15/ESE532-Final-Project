@@ -171,6 +171,8 @@ The one exception to this was the output from the \texttt{SHA} unit, as its outp
 
 \subsubsection{SHA-256}
 
+It takes streamed input from CDC, collects 64 bytes of data and performs its computation on that sub-chunk. Due to the sequential nature of SHA, it collects 64 bytes for each sun-chunk and computes them in a pipelined fashion. Once it is done with one chunk, it streams out the 256 bit (32 byte) SHA value for that chunk. Due to the dataflow pragma, SHA doesn't wait for the entire chunk to be read in before starting its computation. It starts operating as soon as there is some data available in the input stream.
+
 \subsubsection{LZW}
 
 Given that the algorithm for compression itself involves, conceptually, one memory lookup, one memory write, and one read from the input stream for each incoming byte,
