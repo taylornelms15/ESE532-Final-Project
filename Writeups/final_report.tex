@@ -165,7 +165,23 @@ CDC performs chunking and the data is taken by SHA and LZW which operate paralle
 
 \subsection{FPGA Design}
 
-%TODO: put our awesome diagram of our data flow
+\subsection{Performance achieved}
+For linux.tar, we got 193 Mbps. That is the maximum speed we got. For smaller files, the speed was less than this. 
+
+\subsection{Energy measurements}
+Power = 2.861 W
+\newline
+Time = 16 s
+\newline
+Energy = 2.861 * 16 = 45.77
+\newline
+Power split among various components is as shown :
+\begin{figure}[hbt!]
+  \includegraphics[width=80mm, scale=0.5]{power.png}
+  \caption{Power split.}
+  \label{fig:power}
+\end{figure}
+
 
 \subsubsection{Hardware Wrapper}
 
