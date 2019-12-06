@@ -210,6 +210,31 @@ as well as the entire incoming \texttt{SHA} digest that corresponds to it.
 Depending on whether or not there was a match in our dictionary, the relevant header is made for the output chunk,
 and either just that header, or the entire LZW-compressed section, is sent to the output stream.
 
+\subsection{Mapping to Zynq}
+\begin{figure}[hbt!]
+  \includegraphics[width=80mm, scale=0.5]{rabin.png}
+  \caption{CDC Mapping.}
+  \label{fig:cdc_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{sha.png}
+  \caption{SHA Mapping.}
+  \label{fig:sha_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{lzw.png}
+  \caption{LZW Mapping.}
+  \label{fig:lzw_mapping}
+\end{figure}
+
+\begin{figure}[h!]
+  \includegraphics[width=80mm, scale=0.5]{deduplicate.png}
+  \caption{Deduplicate Mapping.}
+  \label{fig:deduplicate_mapping}
+\end{figure}
+
 
 \subsection{Bottleneck}
 
