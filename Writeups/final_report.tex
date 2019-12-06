@@ -38,11 +38,47 @@ As such, you must excuse us if we are light on some empiric details, as we, even
 
 All the components CDC, SHA, LZW and deduplication operate in hardware. 
 Input data is read from network and it is processed in 2MB parts. 
-// TODO: Detailed description about network reads
-\newline\newline
 
-Processor components:
-\newline\newline
+\subsection{Compression achieved:}
+
+    Input file : LittlePrince.txt       
+    \newline
+    Input size : 14KB
+    \newline
+    Compressed size: 4.4KB
+    \newline\newline
+    
+    Input file : ESE532.tar       
+    \newline
+    Input size : 50KB
+    \newline
+    Compressed size: 24.2KB
+    \newline\newline
+
+    Input file : Franklin.txt       
+    \newline
+    Input size : 390KB
+    \newline
+    Compressed size: 308KB
+    \newline\newline
+
+    Input file : vmlinuz.tar       
+    \newline
+    Input size : 66MB
+    \newline
+    Compressed size: 36.6MB
+    \newline\newline
+
+    Input file : linux.tar       
+    \newline
+    Input size : 191MB
+    \newline
+    Compressed size: 60.9MB
+    \newline\newline
+
+
+\subsection{Processor components:}
+
 Input data is read from network and it is processed in 2MB parts. 
 \newline
 The input read over the network is handled using a pthread that is executing on its own core. 
@@ -128,7 +164,7 @@ A different implementation would more cleverly synchronize the operations that t
 
 If we distance ourselves from the bounds of the Ultra96 system, however, we can consider all manner of other design options.
 \par
-Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \textt{SHA} in parallel), and seeing what additional resources could add to our design.
+Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \texttt{SHA} in parallel), and seeing what additional resources could add to our design.
 \newline\par
 One thing that could immediately help our design would be to have a fully-associative memory for the records of what the \texttt{SHA} digest was for each chunk index. Putting such a memory into small, local memories would allow for extremely fast lookups in service of deduplication.
 \par
@@ -183,7 +219,7 @@ The changes in what speed we get while moving from all software to all hardware 
  \hline
  \textbf{Implementation}  & \textbf{All Software} & \textbf{LZW in hardware} & \textbf{All hardware} \\ 
  \hline
- \textbf{Speed}           & 15 mbps      & 10mbps          & 193 mbps \\ 
+ \textbf{Speed}           & 15 Mbps      & 10Mbps          & 193 Mbps \\ 
  \hline
 \end{tabular}
 \end{center}
