@@ -41,7 +41,7 @@ Input data is read from network and it is processed in 2MB parts.
 // TODO: Detailed description about network reads
 \newline\newline
 
-Processor components:
+\subsection{Processor components}
 \newline\newline
 Input data is read from network and it is processed in 2MB parts. 
 \newline
@@ -52,7 +52,7 @@ The primary processor core(core 0) is running the PS section that interfaces wit
 The network thread is bound to run only on core 2. 
 \newline
 
-Network thread functionality: 
+\subsubsection{Network thread functionality} 
 \newline\newline
 The thread uses a 200MB input buffer that is shared between the cores 2 and 0.
 \newline
@@ -66,7 +66,7 @@ This variable is checked against in the main processor to make certain that it d
 Finally upon exit, the NW thread indicates that it has completed its purpose and marks a variable that is used by core 0 to figure out that no more packets are to be expected.
 \newline
 
-Output thread functionality:
+\subsubsection{Output thread functionality}
 \newline\newline
 There is a 3rd thread outside of the main and network thread that is tasked with writing processed data onto a file. 
 \par
@@ -76,6 +76,52 @@ It is invoked based on the existing synchronization mechanisms and it frees the 
 
 CDC performs chunking and the data is taken by SHA and LZW which operate parallely. The output of SHA which is 256 bit SHA value and the compressed output of LZW are both taken by deduplicate section to finally write the appropriate output to the output file. 
 3 ARM cores are being used. One is used for reading the input data, one for processing the data and the third for writing the output to the output file.  
+
+\subsection{FPGA Design}
+
+%TODO: put our awesome diagram of our data flow
+
+\subsubsection{Hardware Wrapper}
+
+On the outside of our PL functionality, we have a wrapper function that allows us to have a singular top-level function that operates on a larger buffer than a single chunk, but a smaller amount of data than an entire file.
+\par
+For us, this has meant calling an overall function on a $2{MB}$ section of data. This was chosen to be larger than a single chunk by a few factors of scale, while being small enough to allow for sensible passing of data into the PL.
+\newline\par
+This wrapper function, \texttt{processBuffer}, sets up the relevant streams between components and calls each of those component functions. 
+Each component is responsible for reading and writing from its relevant stream for as many times as it needs across the entire length of that input buffer.
+\par
+It contains simple functions for turning the internal streams into the whole-buffer sizes that SDx likes, which allows us to use a \texttt{SEQUENTIAL} access pattern on our data as a whole. That way, each interface, effectively, is implemented as a FIFO.
+\newline\par
+Each of the streams internally are $9$-bit value streams; that way, we could allow for delimiting 'bytes', which marked the ends of chunks or the end of the buffer overall (represented internally as \texttt{ENDOFCHUNK} and \texttt{ENDOFFILE} macros).
+\par
+The one exception to this was the output from the \texttt{SHA} unit, as its output was always a set of $32$ 8-bit values matched to the number of chunks coming out of \texttt{LZW}.
+
+\subsubsection{Rabin Fingerprinting}
+
+\subsubsection{SHA-256}
+
+\subsubsection{LZW}
+
+\subsubsection{Deduplication}
+
+This function includes the calls to the \texttt{chunkDict} location of shared memory, containing the records of each \texttt{SHA} digest and its matching index.
+\newline\par
+Given the potentially large number of output chunks, we could not keep these records in the PL memory. 
+As such, we implemented a rough dictionary in shared memory, hashing the digest down to $16$ bits with a simple \texttt{XOR} strategy,
+and using that to index into our shared memory area.
+\par
+We decided to allow for some degree of hash collisions here; with a potential worst-case of roughly $2^{17}$ chunks to store digests for,
+we allowed a factor-of-2 safety on our hash function, leading to $4$ records per hash bucket. 
+There's a reasonable chance that this decision
+is leading to our woes of things not working; a larger stretch of time would have allowed for better analysis on this point.
+
+\newline\par
+The rest of the function was pedestrian by comparison; it reads the entire \texttt{LZW} stream (so no excess data is left) into a buffer,
+as well as the entire incoming \texttt{SHA} digest that corresponds to it.
+\par
+Depending on whether or not there was a match in our dictionary, the relevant header is made for the output chunk,
+and either just that header, or the entire LZW-compressed section, is sent to the output stream.
+
 
 \subsection{Bottleneck}
 
