@@ -38,11 +38,48 @@ As such, you must excuse us if we are light on some empiric details, as we, even
 
 All the components CDC, SHA, LZW and deduplication operate in hardware. 
 Input data is read from network and it is processed in 2MB parts. 
-// TODO: Detailed description about network reads
-\newline\newline
 
-\subsection{Processor components}
-\newline\newline
+
+\subsection{Compression achieved:}
+
+    Input file : LittlePrince.txt       
+    \newline
+    Input size : 14KB
+    \newline
+    Compressed size: 4.4KB
+    \newline\newline
+    
+    Input file : ESE532.tar       
+    \newline
+    Input size : 50KB
+    \newline
+    Compressed size: 24.2KB
+    \newline\newline
+
+    Input file : Franklin.txt       
+    \newline
+    Input size : 390KB
+    \newline
+    Compressed size: 308KB
+    \newline\newline
+
+    Input file : vmlinuz.tar       
+    \newline
+    Input size : 66MB
+    \newline
+    Compressed size: 36.6MB
+    \newline\newline
+
+    Input file : linux.tar       
+    \newline
+    Input size : 191MB
+    \newline
+    Compressed size: 60.9MB
+    \newline\newline
+
+
+\subsection{Processor components:}
+
 Input data is read from network and it is processed in 2MB parts. 
 \newline
 The input read over the network is handled using a pthread that is executing on its own core. 
@@ -191,7 +228,7 @@ A different implementation would more cleverly synchronize the operations that t
 
 If we distance ourselves from the bounds of the Ultra96 system, however, we can consider all manner of other design options.
 \par
-Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \textt{SHA} in parallel), and seeing what additional resources could add to our design.
+Let us approach this by keeping the core of our design (the use of streaming data, the \texttt{DATAFLOW} pragma, and doing \texttt{LZW} and \texttt{SHA} in parallel), and seeing what additional resources could add to our design.
 \newline\par
 One thing that could immediately help our design would be to have a fully-associative memory for the records of what the \texttt{SHA} digest was for each chunk index. Putting such a memory into small, local memories would allow for extremely fast lookups in service of deduplication.
 \par
@@ -225,15 +262,31 @@ But that incremental way of putting things in hardware helped us ultimately movi
 \newline\newline
 To make advantage of running in hardware. we used dataflow pragma and serialized everything so that as soon as the data is available, the hardware component can start processing on it. 
 \newline
-CDC provides chunk data to SHA and LZW simultaneously, which operate in parallel. The flow of our design is described by the following diagram:
+CDC provides chunk data to SHA and LZW simultaneously, which operate in parallel. The flow of our design is described in Figure 1.
 \newline\newline
-// TODO: Add diagram
-\newline\newline
+
+\begin{figure}
+  \includegraphics[width=\linewidth]{data_flow.jpg}
+  \caption{Data flow.}
+  \label{fig:data_flow}
+\end{figure}
+
 To save space on FPGA memory, we use shared memory to store our hash table for the deduplication step.
 Another optimization technique was to use separate arm cores to read the input data from ethernet, to process on the data and to write the data to the output file. 
 \newline
 That saves time in the sense that it doesn't have to wait for the data transmission to complete before it can start processing on the data already read. So, one core reads the data from the ethernet and writes it to the shared memory, another core reads it and transfers it to the FPGA as soon as 2MB data has been written to it, and the third core writes the output data as soon as the 2MB data has been processed in the FPGA. This makes the overall implementation faster. 
-\newline\newline
+\newline\newline\newline
+
+The changes in what speed we get while moving from all software to all hardware is shown in the following table:
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+ \hline
+ \textbf{Implementation}  & \textbf{All Software} & \textbf{LZW in hardware} & \textbf{All hardware} \\ 
+ \hline
+ \textbf{Speed}           & 15 Mbps      & 10Mbps          & 193 Mbps \\ 
+ \hline
+\end{tabular}
+\end{center}
 
 \section{Individual contribution}
 
