@@ -182,7 +182,6 @@ Power split among various components is as shown :
   \label{fig:power}
 \end{figure}
 
-
 \subsubsection{Hardware Wrapper}
 
 On the outside of our PL functionality, we have a wrapper function that allows us to have a singular top-level function that operates on a larger buffer than a single chunk, but a smaller amount of data than an entire file.
@@ -199,6 +198,14 @@ Each of the streams internally are $9$-bit value streams; that way, we could all
 The one exception to this was the output from the \texttt{SHA} unit, as its output was always a set of $32$ 8-bit values matched to the number of chunks coming out of \texttt{LZW}.
 
 \subsubsection{Rabin Fingerprinting}
+The Rabin fingerprint reads data from a specialized function which creates a stream from the input buffer to the Hardware function. 
+\newline
+This finds the chunk in this stream and upon finding the chunk, it delineates the implementation with a special ENDOFCHUNK or ENDOFFILE stream byte. This allows the later applications to figure out the where the chunk boundary is. 
+\newline
+The stream is at the same time sent to both the SHA component and the LZW component which work parallely to process this stream as explained below.
+\newline
+The dataflow model allows us to focus at a stream level and use an additional stream byte to indicate important boundaries within the stream.
+\newline
 
 \subsubsection{SHA-256}
 It takes streamed input from CDC, collects 64 bytes of data and performs its computation on that sub-chunk. Due to the sequential nature of SHA, it collects 64 bytes for each sun-chunk and computes them in a pipelined fashion. Once it is done with one chunk, it streams out the 256 bit (32 byte) SHA value for that chunk. Due to the dataflow pragma, SHA doesn't wait for the entire chunk to be read in before starting its computation. It starts operating as soon as there is some data available in the input stream.
@@ -481,7 +488,9 @@ The new approach using dataflow and every component in hardware boosted the spee
 \section{Individual contribution}
 
 \par
+Taylor implemented the LZW, chunkdict associative map and the basic framework for the Dataflow model. 
 Nishanth worked on the Rabin CDC functionality and also implemented the network and output threads on each core.
+\newline\newline
 Ritika worked on SHA software and hardware implementations.
 \newline\newline
 All of us were involved in various capacities in the debug and testing phases of this project.  
