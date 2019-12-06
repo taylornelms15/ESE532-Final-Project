@@ -8,7 +8,7 @@
 
 #define NONEFOUND 0x1FFF
 //Tunable design axis parameters
-#define HDEPTH 24//depth of the hash bucket (capacity = (8k vals / 1k rows) * (3x capacity variance buffer))
+#define HDEPTH 32//depth of the hash bucket (capacity = (8k vals / 1k rows) * (4x capacity variance buffer))
 #define ROWNUM (MAXCHUNKLENGTH)
 #define ROWBITS 13//log2(number of rows)
 #define COLNUM (MAXCHARVAL)
